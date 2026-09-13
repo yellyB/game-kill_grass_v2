@@ -1,0 +1,45 @@
+# Godot 4+ specific ignores
+.godot/
+
+# Godot-specific ignores
+*.translation
+
+# Imported textures and samples
+.import/
+
+# MCP related
+.godot-mcp/
+.mcp.json
+
+# Claude Code - CLAUDE.md와 .claude/ 디렉토리는 레포에 포함
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Export templates
+export_presets.cfg
+
+# Android build template
+android/
+
+# Keystore (보안 파일)
+*.keystore
+*.jks
+
+# Mono-specific ignores
+.mono/
+data_*/
+mono_crash.*.json
