@@ -28,6 +28,7 @@ GOOMOK_HP_BASE = 600.0    # 월드1 거목 HP (크릿·거목피해 DPS 반영 �
 GOOMOK_KILL_FRACTION = 0.55  # 세션 중 거목 전투에 쓰는 시간 비율
 WORLD2_COST    = 100      # (표시용) 월드2 해금 비용
 POWERUP_COIN_MAX_BONUS = 0.4  # 인런 파워업 코인 배율: 세션Lv 10에서 +40%(1.4x). 초반(저Lv)은 비례 축소
+SPEND_FRAC = 0.6              # 매 세션 보유금의 이 비율은 스킬 재투자, 나머지는 진행(해금/초월) 저축
 
 CHUNK          = 400.0
 CHUNK_AREA     = CHUNK*CHUNK
@@ -47,7 +48,7 @@ GOLD = (80, 100, 25.0)   # 황금풀
 # 월드 배율 (풀 HP·보상), 해금 비용 (원본)
 WORLD_HP_MULT     = [1.0, 1.3, 1.69, 2.2, 2.86, 3.71, 4.83]
 WORLD_REWARD_MULT = [1.0, 1.3, 1.69, 2.2, 2.86, 3.71, 4.83]
-WORLD_UNLOCK_COST = [0, 100, 1000, 10000, 25000, 50000, 100000]
+WORLD_UNLOCK_COST = [0, 24000, 60000, 105000, 180000, 420000, 840000]  # 시뮬 정렬: 월드해금~40/초월~54/스킬맥스~58
 GOOMOK_WORLD_SCALE = WORLD_HP_MULT  # 거목 HP = BASE × 이 배율
 
 # 세션 레벨(인런) XP 곡선: 벤 풀 티어 XP + 레벨업 필요치 (cap 10)
@@ -263,8 +264,8 @@ def scn_progression(target=7):
     print(f"  권장 해금비용 곡선(월드2~7) = {unlock_rec[1:]}")
 
 def game_level(kills, cap=15):
-    # 거목 처치 누적 → 레벨. ~6처치당 1레벨(메인7≈50처치→~9, +초월 그라인드로 15 도달)
-    return min(cap, 1 + int(kills)//6)
+    # 거목(첫클리어) 누적 → 레벨. 완주=전 초월 첫클리어 28회 ≈ Lv15 (2회당 1레벨)
+    return min(cap, 1 + int(kills)//2)
 
 # ═══════════════════════════════ 초월 + 보석 경제 ═══════════════════════════════
 MAX_TRANS = 3
@@ -333,6 +334,57 @@ def buy_full(st, money, gems, gem_unlocked, goomok_hp):
 
 def skills_maxed(st): return all(st.get(sk,0)>=MAXTICKS[sk] for sk in COSTS)
 
+def buy_save(st, money, gems, gem_unlocked, goomok_hp, pb_limit=3.0):
+    """저축형: 보석 티어 개방 + 거목 잡을 DPS + 회수기간 좋은(payback<pb) 수입 투자만. 나머지 저축."""
+    changed=True
+    while changed:
+        changed=False
+        for sk in list(COSTS):
+            t=st.get(sk,0)
+            if t>=MAXTICKS[sk]: continue
+            ulv=t//COSTS[sk][1]+1; cost=GEM_LOCK.get(sk,{}).get(ulv,0)
+            if cost>0 and (sk,ulv) not in gem_unlocked and gems>=cost:
+                gem_unlocked.add((sk,ulv)); gems-=cost; changed=True
+    def buyable(sk):
+        t=st.get(sk,0)
+        if t>=MAXTICKS[sk] or next_tier_locked(sk,t,gem_unlocked): return None
+        c=tick_cost(sk,t); return c if (c is not None and c<=money) else None
+    while not can_clear_goomok(st, goomok_hp):   # 거목 잡을 만큼 DPS
+        pick=None
+        for sk in DPS_SKILLS:
+            c=buyable(sk)
+            if c and (pick is None or c<pick[1]): pick=(sk,c)
+        if pick is None: break
+        st[pick[0]]=st.get(pick[0],0)+1; money-=pick[1]
+    while True:   # 회수기간 좋은 수입 투자만
+        base=_income_rate(st); best=None
+        for sk in INCOME_SKILLS:
+            c=buyable(sk)
+            if c is None: continue
+            t=st.get(sk,0); st[sk]=t+1; d=_income_rate(st)-base; st[sk]=t
+            pb=c/d if d>0 else 1e18
+            if pb<pb_limit and (best is None or pb<best[2]): best=(sk,c,pb)
+        if best is None: break
+        st[best[0]]=st.get(best[0],0)+1; money-=best[1]
+    return money, gems
+
+def scn_tune(target=7):
+    print(f"── 해금비용 역산 (각 월드 {target}세션 목표, 저축형 플레이어) ──")
+    st={}; money=0; gems=0; gem_unlocked=set(); cleared=set(); total=0; kills=0; unlock_rec=[0]
+    for w in range(7):
+        for s in range(target):
+            total+=1
+            money+=simulate_session(st, w, 0)[0]
+            money,gems=buy_save(st,money,gems,gem_unlocked, goomok_hp_at(w,0))
+            if (w,0) not in cleared and can_clear_at(st,w,0):
+                cleared.add((w,0)); gems+=gem_drop(w,0); kills+=1
+        unlock_rec.append(round(money))   # 7세션 후 저축액 = 권장 해금비용
+        inc=simulate_session(st,w,0)[0]
+        print(f"  월드{w+1}→{w+2}: 권장해금 ${unlock_rec[-1]:>11,} | 세션수입 ${inc:>9,.0f} | 스킬맥스 {skill_max_pct(st):4.0f}% | 보석 {gems}")
+        money=0
+    print(f"\n  권장 해금비용(월드2~7) = {unlock_rec[1:]}")
+    print(f"  → 월드 전체 해금 ≈ {total}세션 (각 {target}세션) | 최종 스킬맥스 {skill_max_pct(st):.0f}%")
+
 def scn_full(verbose=False):
     print(f"── 풀 이코노미 (월드+초월+보석+스킬, 숫자 세션루프) ──  [스킬 맥스 필요 보석={GEMS_NEEDED}]")
     st={}; money=0; gems=0; gem_unlocked=set()
@@ -343,8 +395,10 @@ def scn_full(verbose=False):
         # 1) 가장 돈 되는 해금 월드(현재 초월 상태) 선택해서 플레이
         w=max(unlocked, key=lambda x: simulate_session(st,x,trans[x])[0])
         money+=simulate_session(st,w,trans[w])[0]
-        # 2) 재투자(보석 티어 개방 + 스킬 구매)
-        money,gems=buy_full(st,money,gems,gem_unlocked, goomok_hp_at(w,trans[w]))
+        # 2) 재투자: 보유금의 SPEND_FRAC만 스킬에, 나머지는 진행(해금/초월) 저축
+        budget=money*SPEND_FRAC
+        left,gems=buy_full(st,budget,gems,gem_unlocked, goomok_hp_at(w,trans[w]))
+        money-=(budget-left)
         # 3) 거목 첫 클리어(각 월드 현재 초월) → 보석
         for w2 in list(unlocked):
             L=trans[w2]
@@ -354,9 +408,9 @@ def scn_full(verbose=False):
         nw=max(unlocked)+1
         if nw<7 and can_clear_at(st,nw,0) and money>=WORLD_UNLOCK_COST[nw]:
             money-=WORLD_UNLOCK_COST[nw]; unlocked.add(nw)
-        # 5) 초월(전 월드 해금 후, 감당되고 클리어 가능하면 최저가 순)
-        if len(unlocked)==7:
-            cand=[(trans_cost(w2,trans[w2]),w2) for w2 in range(7)
+        # 5) 초월(월드 5 도달 시 개방 — 해금된 월드만, 감당되고 클리어 가능하면 최저가 순)
+        if len(unlocked)>=5:
+            cand=[(trans_cost(w2,trans[w2]),w2) for w2 in unlocked
                   if trans[w2]<MAX_TRANS and can_clear_at(st,w2,trans[w2]+1)]
             cand=[c for c in cand if c[0]<=money]
             if cand:
@@ -376,6 +430,7 @@ def scn_full(verbose=False):
 if __name__=="__main__":
     ap=argparse.ArgumentParser(description="v2 밸런싱 시뮬")
     ap.add_argument("scenario", nargs="?", default="full",
-                    choices=["session","pacing","progression","full"])
+                    choices=["session","pacing","progression","full","tune"])
     a=ap.parse_args()
-    {"session":scn_session,"pacing":scn_pacing,"progression":scn_progression,"full":scn_full}[a.scenario]()
+    {"session":scn_session,"pacing":scn_pacing,"progression":scn_progression,
+     "full":scn_full,"tune":scn_tune}[a.scenario]()
