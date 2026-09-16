@@ -27,6 +27,7 @@ TICK_DT        = 0.05     # 시뮬 틱(초)
 GOOMOK_HP_BASE = 600.0    # 월드1 거목 HP (크릿·거목피해 DPS 반영 → 클리어 ~7세션)
 GOOMOK_KILL_FRACTION = 0.55  # 세션 중 거목 전투에 쓰는 시간 비율
 WORLD2_COST    = 100      # (표시용) 월드2 해금 비용
+POWERUP_COIN_MAX_BONUS = 0.4  # 인런 파워업 코인 배율: 세션Lv 10에서 +40%(1.4x). 초반(저Lv)은 비례 축소
 
 CHUNK          = 400.0
 CHUNK_AREA     = CHUNK*CHUNK
@@ -153,8 +154,11 @@ def simulate_session(st, world=0, trans=0, want_xp=False):
     capacity  = cnt / (math.ceil(avg_hp/max(1e-9,dmg)) * iv)
     rate = min(encounter, capacity)          # 초당 처치 풀 수
     kills = rate*T
-    coins = kills*avg_val
-    if want_xp: return coins, kills, kills*avg_xp
+    xp = kills*avg_xp
+    # 인런 파워업 코인 배율: 세션 레벨(획득 파워업 수)에 비례 (초반 낮음 → 성장 후 최대 +40%)
+    coin_mult = 1.0 + POWERUP_COIN_MAX_BONUS*(session_level(xp)/SESSION_LV_CAP)
+    coins = kills*avg_val*coin_mult
+    if want_xp: return coins, kills, xp
     return coins, kills
 
 def session_level(xp):
