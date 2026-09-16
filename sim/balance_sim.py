@@ -126,13 +126,14 @@ def can_clear_goomok(st, goomok_hp):
     return goomok_dps(st)*killt >= goomok_hp
 
 # ═══════════════════════════════ 세션 수입 (정상상태 해석 모델) ═══════════════════════════════
-def simulate_session(st, world=0, want_xp=False):
+def simulate_session(st, world=0, trans=0, want_xp=False):
     """세션 수확 수입(정상상태 근사). 실제 플레이 = min(풀 유입 속도, 처치 캐파).
     - 유입(encounter) = 공격원(반경 R)이 이동속도 v로 스와스를 훑음 = 2R·v·풀밀도D
     - 캐파(capacity) = 스윙당 cnt개에 dmg → 초당 처치 = cnt / (ceil(HP/dmg) × 스윙간격)
     - 실제 처치율 = min(유입, 캐파). (플레이어는 풀 있는 곳에 머물며 벤다고 가정)
+    - trans(초월): 풀 HP ×(1+0.4L), 보상 ×(1+0.5L).
     반환: (코인, 처치수[, 세션XP])."""
-    hp_mult = WORLD_HP_MULT[world]; rw_mult = WORLD_REWARD_MULT[world]
+    hp_mult = WORLD_HP_MULT[world]*(1+0.4*trans); rw_mult = WORLD_REWARD_MULT[world]*(1+0.5*trans)
     R   = s_attack_range(st.get("attack_range",0))
     v   = s_move(st.get("move_speed",0))
     iv  = s_attack_speed(st.get("attack_speed",0))
@@ -170,31 +171,43 @@ PAYBACK_LIMIT = 3.0   # 수입 틱: 회수기간(세션) 이보다 짧으면 구
 
 def _income_rate(st): return simulate_session(st, world=0)[0]
 
-def buy(st, money, goomok_hp):
-    # 1) 수입 성장: ROI(Δ수입/비용) 좋은 income 틱을 payback 기준으로 구매
+def buy(st, money, goomok_hp, reserve=0):
+    """실제 방치형: 번 돈을 (reserve 남기고) 전부 재투자.
+    우선순위: 거목 못 잡으면 DPS → 그다음 수입 ROI 최고 틱 → 남으면 아무거나(코인 소진)."""
     while True:
-        base=_income_rate(st); best=None
-        for sk in INCOME_SKILLS:
-            t=st.get(sk,0)
-            if t>=MAXTICKS[sk]: continue
-            c=tick_cost(sk,t)
-            if c is None or c>money: continue
-            st[sk]=t+1; d=_income_rate(st)-base; st[sk]=t   # 시험 계산
-            pb=c/d if d>0 else 1e18
-            if pb<PAYBACK_LIMIT and (best is None or pb<best[2]): best=(sk,c,pb)
-        if best is None: break
-        st[best[0]]=st.get(best[0],0)+1; money-=best[1]
-    # 2) 남는 돈으로 DPS(공격) 점진 투자 — 최저가 순
-    while True:
-        d=None
-        for sk in DPS_SKILLS:
-            t=st.get(sk,0)
-            if t>=MAXTICKS[sk]: continue
-            c=tick_cost(sk,t)
-            if c is None or c>money: continue
-            if d is None or c<d[1]: d=(sk,c)
-        if d is None: break
-        st[d[0]]=st.get(d[0],0)+1; money-=d[1]
+        avail = money - reserve
+        if avail <= 0: break
+        pick=None
+        # 거목 못 잡으면 DPS 최저가
+        if not can_clear_goomok(st, goomok_hp):
+            for sk in DPS_SKILLS:
+                t=st.get(sk,0)
+                if t>=MAXTICKS[sk]: continue
+                c=tick_cost(sk,t)
+                if c is None or c>avail: continue
+                if pick is None or c<pick[1]: pick=(sk,c)
+        # 수입 ROI 최고 틱
+        if pick is None:
+            base=_income_rate(st); bestpb=None
+            for sk in INCOME_SKILLS:
+                t=st.get(sk,0)
+                if t>=MAXTICKS[sk]: continue
+                c=tick_cost(sk,t)
+                if c is None or c>avail: continue
+                st[sk]=t+1; d=_income_rate(st)-base; st[sk]=t
+                pb=c/d if d>0 else 1e18
+                if bestpb is None or pb<bestpb[2]: bestpb=(sk,c,pb)
+            if bestpb and bestpb[2]<1e17: pick=(bestpb[0],bestpb[1])
+        # 그래도 없으면 아무 스킬이나 최저가(코인 소진 = 남은 비싼 티어 채움)
+        if pick is None:
+            for sk in COSTS:
+                t=st.get(sk,0)
+                if t>=MAXTICKS[sk]: continue
+                c=tick_cost(sk,t)
+                if c is None or c>avail: continue
+                if pick is None or c<pick[1]: pick=(sk,c)
+        if pick is None: break
+        st[pick[0]]=st.get(pick[0],0)+1; money-=pick[1]
     return money
 
 # ═══════════════════════════════ 시나리오 ═══════════════════════════════
@@ -219,35 +232,146 @@ def scn_pacing():
             if clear: break
         print(f"  {hp:5d}  |    {mr}      |    {clear}")
 
-def scn_progression():
-    print("── 월드1~7 완주 진행 ──")
-    print(" 월드 | 세션 | 첫클리어 | 거목HP | 세션수입$ | AP | AS | 밀도 | 게임Lv")
-    st={}; money=0; total=0; goomok_kills=0
+TOTAL_TICKS = sum(MAXTICKS.values())
+def skill_max_pct(st): return 100.0*sum(min(st.get(k,0),MAXTICKS[k]) for k in COSTS)/TOTAL_TICKS
+
+def scn_progression(target=7):
+    """각 월드 목표 세션 수(target)로 강제 진행 → 필요한 해금비용 역산 + 스킬맥스 추적."""
+    print(f"── 월드1~7 진행 (각 월드 {target}세션 목표) ──")
+    print(" 월드 | 첫클리어 | 거목HP | 세션수입$ | 권장해금비용$ | 스킬맥스% | 게임Lv")
+    st={}; money=0; total=0; kills=0; unlock_rec=[0]; skillmax_done=None
     for w in range(7):
         ghp = GOOMOK_HP_BASE*GOOMOK_WORLD_SCALE[w]
-        unlock = WORLD_UNLOCK_COST[w+1] if w+1<7 else 0
-        ws=0; first=None; last_inc=0
-        while ws<300:
-            total+=1; ws+=1
-            coins,_=simulate_session(st, world=w); money+=coins; last_inc=coins
+        first=None; last_inc=0
+        for s in range(target):
+            total+=1
+            last_inc=simulate_session(st, world=w)[0]; money+=last_inc
             money=buy(st, money, ghp)
             if can_clear_goomok(st,ghp):
-                if first is None: first=ws
-                goomok_kills+=1
-                if w==6 or money>=unlock:
-                    if w<6: money-=unlock
-                    break
-        glv = game_level(goomok_kills)
-        print(f"  {w+1}  | {ws:4d} |   {str(first):4s}  | {ghp:6.0f} | ${last_inc:8.0f} | {st.get('attack_power',0):2d} | {st.get('attack_speed',0):2d} | {st.get('grass_density',0):3d} |  {glv}")
-    print(f"\n  완주 총 세션={total} | 거목 처치={goomok_kills} | 최종 게임레벨={game_level(goomok_kills)}")
+                if first is None: first=s+1
+                kills+=1
+            if skillmax_done is None and skill_max_pct(st)>=99.9: skillmax_done=total
+        unlock_rec.append(round(money))   # 이 세션들 후 보유금 = 다음 월드 권장 해금비용
+        money=0                            # 해금에 지불
+        print(f"  {w+1}  |   {str(first):4s}  | {ghp:6.0f} | ${last_inc:9.0f} | ${unlock_rec[-1]:11d} |  {skill_max_pct(st):5.1f}  |  {game_level(kills)}")
+    print(f"\n  완주 총 세션={total} | 거목 처치={kills} | 게임레벨={game_level(kills)}")
+    print(f"  전 월드 해금 완료 = {total}세션 | 스킬 전체 맥스 = {skillmax_done or '>완주'}세션")
+    print(f"  권장 해금비용 곡선(월드2~7) = {unlock_rec[1:]}")
 
 def game_level(kills, cap=15):
     # 거목 처치 누적 → 레벨. ~6처치당 1레벨(메인7≈50처치→~9, +초월 그라인드로 15 도달)
     return min(cap, 1 + int(kills)//6)
 
+# ═══════════════════════════════ 초월 + 보석 경제 ═══════════════════════════════
+MAX_TRANS = 3
+def goomok_hp_at(w, L): return GOOMOK_HP_BASE*GOOMOK_WORLD_SCALE[w]*(1+0.4*L)
+def can_clear_at(st, w, L): return can_clear_goomok(st, goomok_hp_at(w,L))
+def trans_cost(w, L):  # 초월 L→L+1 비용 (사용자: ~월드4~5 해금 비용 수준)
+    base = WORLD_UNLOCK_COST[min(w+2,6)]
+    return int(max(500, base)*(1+L))
+def gem_drop(w, L): return max(1, L)   # (w,L) 첫 클리어 보석(초월 레벨만큼, 최소1)
+
+# 보석으로 잠긴 스킬 상위 티어 (유저레벨: 보석수) — 원본 SKILL_GEM_COSTS(모델된 스킬만)
+GEM_LOCK = {
+ "attack_power":{4:1,6:2,8:3}, "attack_speed":{4:1,5:2,6:3}, "attack_range":{6:1},
+ "crit_chance":{4:1}, "goomok_dmg":{5:1}, "crit_damage":{5:1},
+ "grass_density":{5:1,7:2}, "grass_quality":{5:1,7:2}, "attack_count":{3:1,4:2,5:3},
+ "golden_chance":{5:1}, "move_speed":{5:1}, "session_time":{3:1,5:2},
+}
+GEMS_NEEDED = sum(sum(v.values()) for v in GEM_LOCK.values())
+
+def next_tier_locked(sk, ticks, gem_unlocked):
+    ulv = ticks//COSTS[sk][1] + 1   # 다음 틱의 유저 레벨(1-base)
+    cost = GEM_LOCK.get(sk,{}).get(ulv,0)
+    return cost>0 and (sk,ulv) not in gem_unlocked
+
+def buy_full(st, money, gems, gem_unlocked, goomok_hp):
+    """번 돈/보석을 재투자. 보석으로 막힌 상위 티어는 보석으로 개방 후 코인 구매."""
+    # 1) 막고 있는 티어를 보석으로 개방(가능한 것부터)
+    changed=True
+    while changed:
+        changed=False
+        for sk in list(COSTS):
+            t=st.get(sk,0)
+            if t>=MAXTICKS[sk]: continue
+            ulv=t//COSTS[sk][1]+1; cost=GEM_LOCK.get(sk,{}).get(ulv,0)
+            if cost>0 and (sk,ulv) not in gem_unlocked and gems>=cost:
+                gem_unlocked.add((sk,ulv)); gems-=cost; changed=True
+    # 2) 코인으로 스킬 구매(거목 못 잡으면 DPS 우선, 그 후 수입 ROI, 티어락 스킵)
+    def buyable(sk):
+        t=st.get(sk,0)
+        if t>=MAXTICKS[sk]: return None
+        if next_tier_locked(sk,t,gem_unlocked): return None
+        c=tick_cost(sk,t)
+        return c if (c is not None and c<=money) else None
+    while True:
+        pick=None
+        if not can_clear_goomok(st, goomok_hp):
+            for sk in DPS_SKILLS:
+                c=buyable(sk)
+                if c and (pick is None or c<pick[1]): pick=(sk,c)
+        if pick is None:
+            base=_income_rate(st); bestpb=None
+            for sk in INCOME_SKILLS:
+                c=buyable(sk)
+                if c is None: continue
+                t=st.get(sk,0); st[sk]=t+1; d=_income_rate(st)-base; st[sk]=t
+                pb=c/d if d>0 else 1e18
+                if bestpb is None or pb<bestpb[2]: bestpb=(sk,c,pb)
+            if bestpb and bestpb[2]<1e17: pick=(bestpb[0],bestpb[1])
+        if pick is None:  # 남은 코인 아무 스킬(비싼 티어 채움)
+            for sk in COSTS:
+                c=buyable(sk)
+                if c and (pick is None or c<pick[1]): pick=(sk,c)
+        if pick is None: break
+        st[pick[0]]=st.get(pick[0],0)+1; money-=pick[1]
+    return money, gems
+
+def skills_maxed(st): return all(st.get(sk,0)>=MAXTICKS[sk] for sk in COSTS)
+
+def scn_full(verbose=False):
+    print(f"── 풀 이코노미 (월드+초월+보석+스킬, 숫자 세션루프) ──  [스킬 맥스 필요 보석={GEMS_NEEDED}]")
+    st={}; money=0; gems=0; gem_unlocked=set()
+    unlocked={0}; trans=[0]*7; cleared=set()
+    sessions=0; world_done=None; skill_done=None; trans_done=None
+    while sessions<5000:
+        sessions+=1
+        # 1) 가장 돈 되는 해금 월드(현재 초월 상태) 선택해서 플레이
+        w=max(unlocked, key=lambda x: simulate_session(st,x,trans[x])[0])
+        money+=simulate_session(st,w,trans[w])[0]
+        # 2) 재투자(보석 티어 개방 + 스킬 구매)
+        money,gems=buy_full(st,money,gems,gem_unlocked, goomok_hp_at(w,trans[w]))
+        # 3) 거목 첫 클리어(각 월드 현재 초월) → 보석
+        for w2 in list(unlocked):
+            L=trans[w2]
+            if (w2,L) not in cleared and can_clear_at(st,w2,L):
+                cleared.add((w2,L)); gems+=gem_drop(w2,L)
+        # 4) 다음 월드 해금(거목 클리어 + 코인)
+        nw=max(unlocked)+1
+        if nw<7 and can_clear_at(st,nw,0) and money>=WORLD_UNLOCK_COST[nw]:
+            money-=WORLD_UNLOCK_COST[nw]; unlocked.add(nw)
+        # 5) 초월(전 월드 해금 후, 감당되고 클리어 가능하면 최저가 순)
+        if len(unlocked)==7:
+            cand=[(trans_cost(w2,trans[w2]),w2) for w2 in range(7)
+                  if trans[w2]<MAX_TRANS and can_clear_at(st,w2,trans[w2]+1)]
+            cand=[c for c in cand if c[0]<=money]
+            if cand:
+                c,w2=min(cand); money-=c; trans[w2]+=1
+        # 마일스톤
+        if world_done is None and len(unlocked)==7: world_done=sessions
+        if trans_done is None and all(t==MAX_TRANS for t in trans): trans_done=sessions
+        if skill_done is None and skills_maxed(st): skill_done=sessions
+        if world_done and trans_done and skill_done: break
+        if verbose and sessions%10==0:
+            print(f"  S{sessions}: 월드{len(unlocked)} 초월{trans} 보석{gems} 스킬맥스{skill_max_pct(st):.0f}% 돈${money:.0f}")
+    print(f"  전 월드 해금 = {world_done}세션")
+    print(f"  전 초월(Lv{MAX_TRANS}) 완료 = {trans_done}세션")
+    print(f"  전 스킬 맥스 = {skill_done}세션 (스킬맥스율 {skill_max_pct(st):.0f}%)")
+    print(f"  총 {sessions}세션 | 보석 획득총량≈{gems+sum(GEM_LOCK[s][l] for (s,l) in gem_unlocked)} | 게임레벨 {game_level(len(cleared))}")
+
 if __name__=="__main__":
     ap=argparse.ArgumentParser(description="v2 밸런싱 시뮬")
-    ap.add_argument("scenario", nargs="?", default="progression",
-                    choices=["session","pacing","progression"])
+    ap.add_argument("scenario", nargs="?", default="full",
+                    choices=["session","pacing","progression","full"])
     a=ap.parse_args()
-    {"session":scn_session,"pacing":scn_pacing,"progression":scn_progression}[a.scenario]()
+    {"session":scn_session,"pacing":scn_pacing,"progression":scn_progression,"full":scn_full}[a.scenario]()
