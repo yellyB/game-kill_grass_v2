@@ -10,6 +10,8 @@
     python3 sim/balance_sim.py progression   # 월드1~7 완주 + 게임레벨
     python3 sim/balance_sim.py powerups      # 파워업 인런 모델(코인/거목 배율)
     python3 sim/balance_sim.py goomok        # 거목/씨앗 진단(등장 시점·격파 소요)
+    python3 sim/balance_sim.py runes         # 룬(키스톤) 효과 축별 비교
+    python3 sim/balance_sim.py glevel        # 게임 레벨 XP 곡선(레벨별 도달 세션·진행률)
     python3 sim/balance_sim.py full          # 풀 이코노미(월드+초월+보석+스킬) = 기본
     python3 sim/balance_sim.py               # = full
 
@@ -517,6 +519,21 @@ def game_level(kills, cap=15):
     # 거목(첫클리어) 누적 → 레벨. 완주=전 초월 첫클리어 28회 ≈ Lv15 (2회당 1레벨)
     return min(cap, 1 + int(kills)//2)
 
+# ── 게임 레벨 XP 곡선 ── 세션 완료(기본) + 거목 처치(더 큼). 누적 임계로 레벨(Lv8≈진행 40%)
+GLEVEL_CAP = 15
+GLEVEL_XP_CURVE_P = 2.5    # 임계 곡선 지수(>1=초반 빠르게/후반 완만). Lv8≈진행 40%에 맞춤
+GLEVEL_SESSION_XP = 10.0   # 세션 완료당 기본 XP
+GLEVEL_GOOMOK_XP  = 40.0   # 거목 처치당 XP(세션보다 큼)
+def goomok_xp(w, L): return GLEVEL_GOOMOK_XP   # 거목 처치 XP(균등 — 곡선 매끄럽게)
+def glevel_threshold(total_xp, lv):  # Lv 도달 누적 XP 임계(Lv15=total)
+    return total_xp*((lv-1)/(GLEVEL_CAP-1))**GLEVEL_XP_CURVE_P
+def glevel_from_xp(cum_xp, total_xp):
+    lv=1
+    for L in range(2,GLEVEL_CAP+1):
+        if cum_xp>=glevel_threshold(total_xp,L): lv=L
+        else: break
+    return lv
+
 # ═══════════════════════════════ 초월 + 보석 경제 ═══════════════════════════════
 MAX_TRANS = 3
 def goomok_hp_at(w, L): return GOOMOK_HP_BASE*GOOMOK_WORLD_SCALE[w]*(1+0.4*L)
@@ -636,8 +653,9 @@ def scn_tune(target=7):
     print(f"\n  권장 해금비용(월드2~7) = {unlock_rec[1:]}")
     print(f"  → 월드 전체 해금 ≈ {total}세션 (각 {target}세션) | 최종 스킬맥스 {skill_max_pct(st):.0f}%")
 
-def run_full():
-    """풀 이코노미 루프 실행 → (world_done, trans_done, skill_done, sessions, cleared수) 반환."""
+def run_full(timeline=None):
+    """풀 이코노미 루프 실행 → (world_done, trans_done, skill_done, sessions, cleared수) 반환.
+    timeline 리스트 전달 시 거목 첫클리어를 (세션, 월드, 초월)로 기록."""
     st={}; money=0; gems=0; gem_unlocked=set()
     unlocked={0}; trans=[0]*7; cleared=set()
     sessions=0; world_done=None; skill_done=None; trans_done=None
@@ -652,6 +670,7 @@ def run_full():
             L=trans[w2]
             if (w2,L) not in cleared and can_clear_at(st,w2,L):
                 cleared.add((w2,L)); gems+=gem_drop(w2,L)
+                if timeline is not None: timeline.append((sessions,w2,L))
         nw=max(unlocked)+1
         if nw<7 and can_clear_at(st,nw,0) and money>=unlock_cost(nw):
             money-=unlock_cost(nw); unlocked.add(nw)
@@ -666,6 +685,32 @@ def run_full():
         if skill_done is None and skills_maxed(st): skill_done=sessions
         if world_done and trans_done and skill_done: break
     return world_done, trans_done, skill_done, sessions, len(cleared)
+
+def _glevel_timeline(tl, total):
+    """세션별 누적 게임레벨 XP → 각 레벨 도달 세션. (세션당 기본XP + 거목 처치XP)"""
+    clears_at={}
+    for (s,w,L) in tl: clears_at.setdefault(s,[]).append((w,L))
+    total_xp=total*GLEVEL_SESSION_XP + sum(goomok_xp(w,L) for _,w,L in tl)
+    cum=0.0; lv_sess={}
+    for s in range(1,total+1):
+        cum+=GLEVEL_SESSION_XP
+        for (w,L) in clears_at.get(s,[]): cum+=goomok_xp(w,L)
+        lv=glevel_from_xp(cum,total_xp)
+        if lv not in lv_sess: lv_sess[lv]=s
+    return lv_sess, total_xp
+
+def scn_glevel():
+    print(f"── 게임 레벨 XP 곡선 (세션 {GLEVEL_SESSION_XP:.0f}XP + 거목 {GLEVEL_GOOMOK_XP:.0f}XP, 곡선지수 p={GLEVEL_XP_CURVE_P}) ──")
+    tl=[]; wd,td,sd,total,_=run_full(tl)
+    lv_sess,total_xp=_glevel_timeline(tl,total)
+    print(f"  총 세션 {total} | 거목 첫클리어 {len(tl)}회 | 총 XP {total_xp:.0f}")
+    print("  레벨 | 도달세션 | 진행률% | XP임계")
+    for L in range(1,GLEVEL_CAP+1):
+        s=lv_sess.get(L)
+        if s is None: print(f"   {L:2d}  |  (스킵)"); continue
+        thr=glevel_threshold(total_xp,L) if L>1 else 0
+        mark=" ← 목표 40%" if L==8 else ""
+        print(f"   {L:2d}  |   {s:3d}   |  {100*s/total:4.0f}%  | {thr:7.0f}{mark}")
 
 def scn_runes():
     global ACTIVE_RUNE
@@ -733,7 +778,7 @@ def scn_full(verbose=False):
 if __name__=="__main__":
     ap=argparse.ArgumentParser(description="v2 밸런싱 시뮬")
     ap.add_argument("scenario", nargs="?", default="full",
-                    choices=["session","pacing","progression","full","tune","powerups","goomok","runes"])
+                    choices=["session","pacing","progression","full","tune","powerups","goomok","runes","glevel"])
     a=ap.parse_args()
     {"session":scn_session,"pacing":scn_pacing,"progression":scn_progression,
-     "full":scn_full,"tune":scn_tune,"powerups":scn_powerups,"goomok":scn_goomok,"runes":scn_runes}[a.scenario]()
+     "full":scn_full,"tune":scn_tune,"powerups":scn_powerups,"goomok":scn_goomok,"runes":scn_runes,"glevel":scn_glevel}[a.scenario]()
