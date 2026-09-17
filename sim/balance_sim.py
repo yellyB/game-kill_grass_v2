@@ -45,7 +45,7 @@ SPEND_FRAC = 0.6              # 매 세션 보유금의 이 비율은 스킬 재
 USE_POWERUPS   = True    # True=33종 파워업 드래프트+스탯 수정자 모델, False=구 coin_mult 근사
 PU_SEEDS       = 10      # 파워업 코인 배율 = 이 횟수만큼 랜덤 드래프트 평균 (상한 없음 — 밸런스는 코인비용으로)
 POWERUP_GOOMOK_MULT = 1.5  # 거목전 인런 파워업+슬롯아이템의 DPS 기여(결정적 근사, 튜닝값)
-COIN_COST_MULT = 2.0     # 코인 비용 배수(스킬틱·해금·초월). 파워업(상한없음)+씨앗게이트 반영 → 월드해금 39/초월 52/스킬맥스 56 (목표 40/54/58)
+COIN_COST_MULT = 1.79    # 코인 비용 배수(스킬틱·해금·초월). 파워업+씨앗+경제너프 반영 → 월드해금 41/초월 56/스킬맥스 58 (목표 40/54/58)
 
 # ── 룬(키스톤) 모델 ── 세션당 1개 장착, 게임레벨로 점진 해금. 조건부는 실효(평균)값으로 근사.
 #  맹공=파밍 공격력↑(거목엔 X), 축재=코인↑(플랫), 벌목꾼=거목DPS↑(파밍 X),
@@ -227,12 +227,12 @@ PU = {
  "pu_crit_damage":  (10,5,{"cm":0.40}),
  "critical_reaper": (10,1,{"reaper":True}),
  "execute":         ( 4,1,{"hp":0.80}),
- "coin_value":      (20,5,{"val":1.15}),
+ "coin_value":      (20,5,{"val":1.12}),
  "pu_magnet_range": (20,5,{"income_dud":True}),
  "regrow_speed":    (20,5,{"D":1.10}),
- "coin_leech":      (20,5,{"vadd":1.0}),
+ "coin_leech":      (20,5,{"val":1.08}),   # 정액+1→벤 풀 코인 +8%/스택(비율제, 초반 degenerate 제거)
  "combo_harvest":   ( 4,1,{"val":1.25}),
- "interest":        (10,5,{"val":1.10}),
+ "interest":        (10,5,{"val":1.08}),
  "overkill":        ( 4,1,{"overkill":True}),
  "pu_golden_chance":(10,5,{"gc":0.02}),
  "golden_luck":     (10,1,{"income_dud":True}),
@@ -338,6 +338,20 @@ def _phased_session(st, world, trans, seed):
                 _,v2,_=_apply_pu(st,pu,kills,level,world,trans,dist)
                 R=s_attack_range(st.get("attack_range",0)); dens=min(s_density(st.get("grass_density",0)),GRID_SIDE*GRID_SIDE)
                 ak=(dens/CHUNK_AREA)*math.pi*(2*R)**2; coins+=ak*v2; kills+=ak
+    return coins
+
+def _fixed_session_coins(st, pu_fixed, world=0, trans=0):
+    """고정 파워업 로드아웃(pu_fixed)으로 세션 코인 적분(램프 반영, 드래프트 없음).
+    감시 대상의 '극단 빌드' 배율 측정용."""
+    dist=s_quality_dist(st.get("grass_quality",0)); T=s_session(st.get("session_time",0))
+    lvcap=SESSION_LV_CAP; t=0.0; level=1; coins=0.0; kills=0.0
+    while t<T-1e-9:
+        rate,val,xpk=_apply_pu(st,pu_fixed,kills,level,world,trans,dist)
+        if level<lvcap:
+            xps=rate*xpk; dt_lv=(2*level)/xps if xps>0 else 1e9
+        else: dt_lv=1e9
+        dt=min(dt_lv,T-t); coins+=rate*val*dt; kills+=rate*dt; t+=dt
+        if t<T-1e-9 and level<lvcap: level+=1
     return coins
 
 _pu_cache={}
@@ -699,6 +713,35 @@ def _glevel_timeline(tl, total):
         if lv not in lv_sess: lv_sess[lv]=s
     return lv_sess, total_xp
 
+def scn_watch():
+    print("── 파워업 감시 대상: 극단 빌드 코인배율 (powerups.md §7) ──")
+    print("  각 빌드를 '그것만 최대스택'으로 강제 → 무파워업 대비 세션 코인 배율. x2.0 넘으면 주의")
+    states=[("초반",{"grass_density":5}),
+            ("중반",{"grass_density":15,"attack_power":10,"grass_quality":16,"crit_chance":6}),
+            ("후반",{"grass_density":30,"attack_power":20,"grass_quality":40,"attack_speed":5,"attack_range":10,"attack_count":6,"crit_chance":10})]
+    # (라벨, 고정 로드아웃) — 감시 대상별 극단 빌드
+    builds=[
+      ("눈덩이 snowball",      {"snowball":1}),
+      ("복리 compound",        {"compound":1}),
+      ("경제3종 곱연산",       {"interest":5,"combo_harvest":1,"coin_value":5}),
+      ("경제3종+흡혈",         {"interest":5,"combo_harvest":1,"coin_value":5,"coin_leech":5}),
+      ("흡혈 coin_leech",      {"coin_leech":5}),
+      ("연쇄 chain_reaction",  {"chain_reaction":1}),
+      ("오버킬 overkill",      {"overkill":1}),
+      ("오버킬+공격",          {"overkill":1,"sharp_blade":5}),
+    ]
+    hdr="  {:22s}".format("빌드")+ "".join(f"| {s:>8s} " for s,_ in states)
+    print(hdr)
+    for label,pu in builds:
+        row=f"  {label:22s}"
+        for _,st in states:
+            base=_fixed_session_coins(st,{})
+            bmult=_fixed_session_coins(st,pu)/base if base>0 else 0
+            flag="!" if bmult>=2.0 else " "
+            row+=f"| x{bmult:5.2f}{flag} "
+        print(row)
+    print("  ※ 흡혈=초반 정액+1 효과 확인 / 경제3종=곱연산 폭주 / 눈덩이·복리=세션길이 의존(여기선 단일세션)")
+
 def scn_glevel():
     print(f"── 게임 레벨 XP 곡선 (세션 {GLEVEL_SESSION_XP:.0f}XP + 거목 {GLEVEL_GOOMOK_XP:.0f}XP, 곡선지수 p={GLEVEL_XP_CURVE_P}) ──")
     tl=[]; wd,td,sd,total,_=run_full(tl)
@@ -778,7 +821,7 @@ def scn_full(verbose=False):
 if __name__=="__main__":
     ap=argparse.ArgumentParser(description="v2 밸런싱 시뮬")
     ap.add_argument("scenario", nargs="?", default="full",
-                    choices=["session","pacing","progression","full","tune","powerups","goomok","runes","glevel"])
+                    choices=["session","pacing","progression","full","tune","powerups","goomok","runes","glevel","watch"])
     a=ap.parse_args()
     {"session":scn_session,"pacing":scn_pacing,"progression":scn_progression,
-     "full":scn_full,"tune":scn_tune,"powerups":scn_powerups,"goomok":scn_goomok,"runes":scn_runes,"glevel":scn_glevel}[a.scenario]()
+     "full":scn_full,"tune":scn_tune,"powerups":scn_powerups,"goomok":scn_goomok,"runes":scn_runes,"glevel":scn_glevel,"watch":scn_watch}[a.scenario]()
