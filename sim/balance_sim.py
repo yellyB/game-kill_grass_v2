@@ -59,7 +59,9 @@ GOLD = (80, 100, 25.0)   # 황금풀
 WORLD_HP_MULT     = [1.0, 1.3, 1.69, 2.2, 2.86, 3.71, 4.83]
 WORLD_REWARD_MULT = [1.0, 1.3, 1.69, 2.2, 2.86, 3.71, 4.83]
 WORLD_UNLOCK_COST = [0, 24000, 60000, 105000, 180000, 420000, 840000]  # 시뮬 정렬: 월드해금~40/초월~54/스킬맥스~58
-GOOMOK_WORLD_SCALE = WORLD_HP_MULT  # 거목 HP = BASE × 이 배율
+# 거목 HP = BASE × 이 배율. 플레이어 DPS가 월드 배율(4.83×)보다 훨씬 빨리 커서(≈80×)
+# 풀 HP 배율을 그대로 쓰면 후반 거목이 시시함 → 거목 전용 가파른 스케일(격파 소요 ~10초 목표로 역산)
+GOOMOK_WORLD_SCALE = [1.0, 3.5, 9.0, 15.0, 16.0, 33.0, 36.0]  # 격파소요 월드1~22초/월드2~7~10초 목표 역산(시뮬 수렴)
 
 # 거목 소환 씨앗: 월드별 필요 개수(3→30, 선형 보간) + 필드 수집 모델
 SEED_NEED = [3, 8, 12, 17, 21, 26, 30]   # 월드1~7 거목 소환 필요 씨앗 수 (사용자: 3→30)
@@ -377,10 +379,8 @@ def buy(st, money, goomok_hp, world=0, reserve=0):
     return money
 
 # ═══════════════════════════════ 시나리오 ═══════════════════════════════
-def scn_goomok():
-    print("── 거목/씨앗 진단 (각 월드 첫 클리어 시점의 상태 기준) ──")
-    print(f"  씨앗 필요수(월드1~7) = {SEED_NEED} | 씨앗수집/s = 2×자석×이동×밀도")
-    print("  월드 첫클리어 | 이속 | 씨앗/s | 거목등장 | 세션 | 전투창 | 거목HP | DPS | 격파소요 | 판정")
+def first_clear_data():
+    """풀 이코노미를 돌려 각 월드 첫 클리어(초월0) 시점의 (세션#, 스킬상태 스냅샷) 반환."""
     st={}; money=0; gems=0; gem_unlocked=set(); unlocked={0}; trans=[0]*7; cleared=set(); sessions=0
     fc={}
     while sessions<5000 and len(fc)<7:
@@ -399,6 +399,13 @@ def scn_goomok():
             cand=[(trans_cost(w2,trans[w2]),w2) for w2 in unlocked if trans[w2]<MAX_TRANS and can_clear_at(st,w2,trans[w2]+1)]
             cand=[c for c in cand if c[0]<=money]
             if cand: c,w2=min(cand); money-=c; trans[w2]+=1
+    return fc
+
+def scn_goomok():
+    print("── 거목/씨앗 진단 (각 월드 첫 클리어 시점의 상태 기준) ──")
+    print(f"  씨앗 필요수(월드1~7) = {SEED_NEED} | 씨앗수집/s = 2×자석×이동×밀도")
+    print("  월드 첫클리어 | 이속 | 씨앗/s | 거목등장 | 세션 | 전투창 | 거목HP | DPS | 격파소요 | 판정")
+    fc=first_clear_data()
     for w in range(7):
         if w not in fc: print(f"  {w+1}  | 미클리어"); continue
         sess,sst=fc[w]; v=s_move(sst.get("move_speed",0)); r=seed_rate(sst); T=s_session(sst.get("session_time",0))
