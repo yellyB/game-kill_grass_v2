@@ -19,7 +19,7 @@
 ■ 수치 출처: 원본(game-kill_grass @4cd58ca) 포팅 + v2 재조정.
   모든 튜닝값은 아래 CONFIG / SKILLS / COSTS 한곳에 모음 (여기만 고치면 됨).
 """
-import argparse, math
+import argparse, math, zlib
 
 # ═══════════════════════════════ CONFIG (튜닝은 여기) ═══════════════════════════════
 SESSION_TIME   = 45.0     # 세션 길이(초, 세션시간 스킬 전)
@@ -35,7 +35,7 @@ USE_POWERUPS   = True    # True=33종 파워업 드래프트+스탯 수정자 �
 PU_SEEDS       = 10      # 파워업 코인 배율 = 이 횟수만큼 랜덤 드래프트 평균
 PU_COIN_MULT_CAP = 2.0   # 파워업 코인 배율 상한(그리디-최적 픽 과대평가 + capacity 병목 스파이크 방지, 의도: 1.3~1.5 상시/최대 2x)
 POWERUP_GOOMOK_MULT = 1.5  # 거목전 인런 파워업+슬롯아이템의 DPS 기여(결정적 근사, 튜닝값)
-COIN_COST_MULT = 1.5     # 코인 비용 배수(스킬틱·해금·초월). 파워업 수입증가 흡수 → 월드해금~40/초월~55/스킬맥스~60 유지
+COIN_COST_MULT = 1.45    # 코인 비용 배수(스킬틱·해금·초월). 파워업 수입증가 흡수 → 월드해금 39/초월 54/스킬맥스 59 (목표 40/54/58)
 
 CHUNK          = 400.0
 CHUNK_AREA     = CHUNK*CHUNK
@@ -306,9 +306,10 @@ def powerup_factors(st, world, trans):
     if r is not None: return r
     rate,avg_val,_,T=_analytic_rate(st,world,trans); base=rate*avg_val*T
     if base<=0: _pu_cache[key]=(1.0,POWERUP_GOOMOK_MULT); return _pu_cache[key]
+    kseed=zlib.crc32(repr(key).encode())   # 결정적 시드(문자열 해시 랜덤화 회피 → 재현성)
     tot=0.0
     for s in range(PU_SEEDS):
-        tot+=_phased_session(st,world,trans,(hash(key)^(s*2654435761))&0x7fffffff)
+        tot+=_phased_session(st,world,trans,(kseed^(s*2654435761))&0x7fffffff)
     cm=min(PU_COIN_MULT_CAP, (tot/PU_SEEDS)/base)
     res=(cm, POWERUP_GOOMOK_MULT); _pu_cache[key]=res; return res
 
