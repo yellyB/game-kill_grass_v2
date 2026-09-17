@@ -21,6 +21,12 @@
 
 ■ 수치 출처: 원본(game-kill_grass @4cd58ca) 포팅 + v2 재조정.
   모든 튜닝값은 아래 CONFIG / SKILLS / COSTS 한곳에 모음 (여기만 고치면 됨).
+
+■ 밸런스 원칙 (필수): **상한(cap/clamp)을 절대 넣지 않는다.**
+  어떤 값이 과도하게 커져 상한이 필요해 보이면, 그 원인이 되는 수치를 더 낮게 조정해
+  상한이 필요 없게 만든다. (예: 파워업 코인배율이 튀면 파워업 개별 효과나 코인비용을
+  조정하지, min()으로 잘라내지 않는다.) 상한은 문제를 가릴 뿐 밸런스가 아니다.
+  ※ 예외: 게임 진행 규칙(세션 레벨/초월/게임 레벨 상한)과 자연 한계(크릿 100% 등)는 상한이 아니라 설계 규칙.
 """
 import argparse, math, zlib
 
@@ -37,7 +43,7 @@ SPEND_FRAC = 0.6              # 매 세션 보유금의 이 비율은 스킬 재
 USE_POWERUPS   = True    # True=33종 파워업 드래프트+스탯 수정자 모델, False=구 coin_mult 근사
 PU_SEEDS       = 10      # 파워업 코인 배율 = 이 횟수만큼 랜덤 드래프트 평균 (상한 없음 — 밸런스는 코인비용으로)
 POWERUP_GOOMOK_MULT = 1.5  # 거목전 인런 파워업+슬롯아이템의 DPS 기여(결정적 근사, 튜닝값)
-COIN_COST_MULT = 2.0     # 코인 비용 배수(스킬틱·해금·초월). 파워업(상한없음)+씨앗게이트 반영 → 월드해금 40/초월 54/스킬맥스 58
+COIN_COST_MULT = 2.0     # 코인 비용 배수(스킬틱·해금·초월). 파워업(상한없음)+씨앗게이트 반영 → 월드해금 39/초월 52/스킬맥스 56 (목표 40/54/58)
 
 # ── 룬(키스톤) 모델 ── 세션당 1개 장착, 게임레벨로 점진 해금. 조건부는 실효(평균)값으로 근사.
 #  맹공=파밍 공격력↑(거목엔 X), 축재=코인↑(플랫), 벌목꾼=거목DPS↑(파밍 X),
@@ -277,7 +283,8 @@ def _apply_pu(st, pu, kills, level, world, trans, dist):
     if reaper: cap_m*=(1+cc*0.3)
     rate=min(2*R*v*D, cnt/(math.ceil(avg_hp/max(1e-9,dmg))*iv)*cap_m)
     val=(avg_val*val_m+vadd)*_rune("avarice")
-    if overkill: val*=(1+min(1.0,max(0.0,dmg/max(1e-9,avg_hp)-1.0)))
+    if overkill:   # 초과데미지 비례 코인. 하드상한 대신 자연 수렴(→+100% 점근, 새싹 폭발 방지)
+        r=max(0.0, dmg/max(1e-9,avg_hp)-1.0); val*=(1 + r/(r+1.0))
     return rate, val, avg_xp
 
 def _draft_pick(st, pu, rng, marginal):
