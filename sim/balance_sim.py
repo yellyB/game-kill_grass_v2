@@ -35,10 +35,18 @@ SPEND_FRAC = 0.6              # 매 세션 보유금의 이 비율은 스킬 재
 
 # ── 파워업(인런) 모델 ──
 USE_POWERUPS   = True    # True=33종 파워업 드래프트+스탯 수정자 모델, False=구 coin_mult 근사
-PU_SEEDS       = 10      # 파워업 코인 배율 = 이 횟수만큼 랜덤 드래프트 평균
-PU_COIN_MULT_CAP = 2.0   # 파워업 코인 배율 상한(그리디-최적 픽 과대평가 + capacity 병목 스파이크 방지, 의도: 1.3~1.5 상시/최대 2x)
+PU_SEEDS       = 10      # 파워업 코인 배율 = 이 횟수만큼 랜덤 드래프트 평균 (상한 없음 — 밸런스는 코인비용으로)
 POWERUP_GOOMOK_MULT = 1.5  # 거목전 인런 파워업+슬롯아이템의 DPS 기여(결정적 근사, 튜닝값)
-COIN_COST_MULT = 1.47    # 코인 비용 배수(스킬틱·해금·초월). 파워업+씨앗게이트 반영 → 월드해금 38/초월 53/스킬맥스 58 (목표 40/54/58)
+COIN_COST_MULT = 2.0     # 코인 비용 배수(스킬틱·해금·초월). 파워업(상한없음)+씨앗게이트 반영 → 월드해금 40/초월 54/스킬맥스 58
+
+# ── 룬(키스톤) 모델 ── 세션당 1개 장착, 게임레벨로 점진 해금. 조건부는 실효(평균)값으로 근사.
+#  맹공=파밍 공격력↑(거목엔 X), 축재=코인↑(플랫), 벌목꾼=거목DPS↑(파밍 X),
+#  파종=씨앗수집↑(거목 조기등장), 만개=획득XP↑(파워업 더↑, 플랫)
+ACTIVE_RUNE = None   # 시뮬 장착 룬: None/onslaught/avarice/woodcutter/sowing/bloom
+# 맹공=파밍 공격력 / 축재=코인 / 벌목꾼=거목DPS / 파종=씨앗수집 (단순 배율)
+# 만개=레벨업 XP+25% & 세션 최대레벨+2 (구조적 — _apply_pu/_phased_session에서 직접 처리, RUNE_VAL 미사용)
+RUNE_VAL = {"onslaught":0.15, "avarice":0.15, "woodcutter":0.30, "sowing":0.40}
+def _rune(name): return (1.0+RUNE_VAL[name]) if ACTIVE_RUNE==name else 1.0
 
 CHUNK          = 400.0
 CHUNK_AREA     = CHUNK*CHUNK
@@ -138,12 +146,12 @@ def eff_damage(st):
     d = s_attack_power(st.get("attack_power",0))
     cc = s_crit_chance(st.get("crit_chance",0)); cm = s_crit_mult(st.get("crit_damage",0))
     return d * (1 + cc*(cm-1))    # 크릿 기대 데미지
-def goomok_dps(st):
-    return eff_damage(st)/s_attack_speed(st.get("attack_speed",0)) * s_goomok_dmg(st.get("goomok_dmg",0))
-def seed_rate(st):   # 초당 씨앗 수집 = 2×자석범위×이동속도×밀도
+def goomok_dps(st):   # 거목 DPS (벌목꾼 룬 반영; 맹공은 거목엔 X)
+    return eff_damage(st)/s_attack_speed(st.get("attack_speed",0)) * s_goomok_dmg(st.get("goomok_dmg",0)) * _rune("woodcutter")
+def seed_rate(st):   # 초당 씨앗 수집 = 2×자석범위×이동속도×밀도 (파종 룬 반영)
     v=s_move(st.get("move_speed",0))
     magnet_eff=50.0+max(0.0,(v-300.0))/450.0*350.0  # 자석 50→400, 이동과 동반 성장(탐험 스킬 프록시)
-    return 2*magnet_eff*v*SEED_DENSITY
+    return 2*magnet_eff*v*SEED_DENSITY*_rune("sowing")
 def goomok_summon_time(st, world):   # 씨앗 N개 모을 때까지(초) = 거목 등장 시점
     r=seed_rate(st); return SEED_NEED[world]/r if r>0 else 1e9
 def can_clear_goomok(st, goomok_hp, world=0):
@@ -159,10 +167,10 @@ def _analytic_rate(st, world, trans):
     hp_mult = WORLD_HP_MULT[world]*(1+0.4*trans); rw_mult = WORLD_REWARD_MULT[world]*(1+0.5*trans)
     R=s_attack_range(st.get("attack_range",0)); v=s_move(st.get("move_speed",0))
     iv=s_attack_speed(st.get("attack_speed",0)); cnt=s_attack_count(st.get("attack_count",0))
-    dmg=eff_damage(st); dens=min(s_density(st.get("grass_density",0)),GRID_SIDE*GRID_SIDE); D=dens/CHUNK_AREA
+    dmg=eff_damage(st)*_rune("onslaught"); dens=min(s_density(st.get("grass_density",0)),GRID_SIDE*GRID_SIDE); D=dens/CHUNK_AREA
     dist=s_quality_dist(st.get("grass_quality",0)); gc=s_golden(st.get("golden_chance",0)); T=s_session(st.get("session_time",0))
     avg_hp =(gc*GOLD[0]+(1-gc)*sum(dist[k]*GRASS[k][0] for k in range(5)))*hp_mult
-    avg_val=(gc*GOLD[1]+(1-gc)*sum(dist[k]*GRASS[k][1] for k in range(5)))*rw_mult
+    avg_val=(gc*GOLD[1]+(1-gc)*sum(dist[k]*GRASS[k][1] for k in range(5)))*rw_mult*_rune("avarice")
     avg_xp = gc*GOLD_XP+(1-gc)*sum(dist[k]*GRASS_XP[k] for k in range(5))
     rate=min(2*R*v*D, cnt/(math.ceil(avg_hp/max(1e-9,dmg))*iv))
     return rate, avg_val, avg_xp, T
@@ -256,7 +264,7 @@ def _apply_pu(st, pu, kills, level, world, trans, dist):
         if "snowball" in e: dmg_m*=(1+e["snowball"]*(kills/100.0))
         if "compound" in e: allm*=(1+e["compound"]*(level-1))
     dmg_m*=allm; R_m*=allm; v_m*=allm; val_m*=allm
-    base_dmg=s_attack_power(st.get("attack_power",0))*dmg_m
+    base_dmg=s_attack_power(st.get("attack_power",0))*dmg_m*_rune("onslaught")
     cc=min(1.0,s_crit_chance(st.get("crit_chance",0))+cc_add); cm=s_crit_mult(st.get("crit_damage",0))+cm_add
     dmg=base_dmg*(1+cc*(cm-1))
     R=s_attack_range(st.get("attack_range",0))*R_m; v=s_move(st.get("move_speed",0))*v_m
@@ -265,10 +273,10 @@ def _apply_pu(st, pu, kills, level, world, trans, dist):
     gc=min(1.0,s_golden(st.get("golden_chance",0))+gc_add)
     avg_hp =(gc*GOLD[0]+(1-gc)*sum(dist[k]*GRASS[k][0] for k in range(5)))*hp_mult*hp_m
     avg_val=(gc*GOLD[1]+(1-gc)*sum(dist[k]*GRASS[k][1] for k in range(5)))*rw_mult
-    avg_xp =(gc*GOLD_XP+(1-gc)*sum(dist[k]*GRASS_XP[k] for k in range(5)))*xp_m
+    avg_xp =(gc*GOLD_XP+(1-gc)*sum(dist[k]*GRASS_XP[k] for k in range(5)))*xp_m*(1.25 if ACTIVE_RUNE=="bloom" else 1.0)
     if reaper: cap_m*=(1+cc*0.3)
     rate=min(2*R*v*D, cnt/(math.ceil(avg_hp/max(1e-9,dmg))*iv)*cap_m)
-    val=avg_val*val_m+vadd
+    val=(avg_val*val_m+vadd)*_rune("avarice")
     if overkill: val*=(1+min(1.0,max(0.0,dmg/max(1e-9,avg_hp)-1.0)))
     return rate, val, avg_xp
 
@@ -295,17 +303,19 @@ def _phased_session(st, world, trans, seed):
     """세션을 레벨업 구간으로 나눠 시뮬(파워업 누적 램프 반영). 반환 코인."""
     rng=_random.Random(seed); dist=s_quality_dist(st.get("grass_quality",0))
     T=s_session(st.get("session_time",0)); pu={}; t=0.0; level=1; coins=0.0; kills=0.0
+    lvcap=SESSION_LV_CAP + (2 if ACTIVE_RUNE=="bloom" else 0)  # 만개: 세션 최대 레벨 +2
+    def need(lv): return 2*lv   # Lv→Lv+1 필요 XP (SESSION_LV_NEED와 동일, 상한 확장용 일반식)
     def marginal(ty):
         r0,v0,_=_apply_pu(st,pu,kills,level,world,trans,dist); base=r0*v0
         p2=dict(pu); p2[ty]=p2.get(ty,0)+1
         r1,v1,_=_apply_pu(st,p2,kills,level,world,trans,dist); return r1*v1-base
     while t<T-1e-9:
         rate,val,xpk=_apply_pu(st,pu,kills,level,world,trans,dist)
-        if level<SESSION_LV_CAP:
-            xps=rate*xpk; dt_lv=SESSION_LV_NEED[level-1]/xps if xps>0 else 1e9
+        if level<lvcap:
+            xps=rate*xpk; dt_lv=need(level)/xps if xps>0 else 1e9
         else: dt_lv=1e9
         dt=min(dt_lv, T-t); coins+=rate*val*dt; kills+=rate*dt; t+=dt
-        if t<T-1e-9 and level<SESSION_LV_CAP:
+        if t<T-1e-9 and level<lvcap:
             level+=1
             pick=_draft_pick(st,pu,rng,marginal)
             if pick: pu[pick]=pu.get(pick,0)+1
@@ -328,7 +338,7 @@ def powerup_factors(st, world, trans):
     tot=0.0
     for s in range(PU_SEEDS):
         tot+=_phased_session(st,world,trans,(kseed^(s*2654435761))&0x7fffffff)
-    cm=min(PU_COIN_MULT_CAP, (tot/PU_SEEDS)/base)
+    cm=(tot/PU_SEEDS)/base   # 상한 없음(밸런스는 수치로 조정)
     res=(cm, POWERUP_GOOMOK_MULT); _pu_cache[key]=res; return res
 
 # ═══════════════════════════════ 플레이어 구매 전략 ═══════════════════════════════
@@ -613,6 +623,58 @@ def scn_tune(target=7):
     print(f"\n  권장 해금비용(월드2~7) = {unlock_rec[1:]}")
     print(f"  → 월드 전체 해금 ≈ {total}세션 (각 {target}세션) | 최종 스킬맥스 {skill_max_pct(st):.0f}%")
 
+def run_full():
+    """풀 이코노미 루프 실행 → (world_done, trans_done, skill_done, sessions, cleared수) 반환."""
+    st={}; money=0; gems=0; gem_unlocked=set()
+    unlocked={0}; trans=[0]*7; cleared=set()
+    sessions=0; world_done=None; skill_done=None; trans_done=None
+    while sessions<5000:
+        sessions+=1
+        w=max(unlocked, key=lambda x: simulate_session(st,x,trans[x])[0])
+        money+=simulate_session(st,w,trans[w])[0]
+        budget=money*SPEND_FRAC
+        left,gems=buy_full(st,budget,gems,gem_unlocked, goomok_hp_at(w,trans[w]), w)
+        money-=(budget-left)
+        for w2 in list(unlocked):
+            L=trans[w2]
+            if (w2,L) not in cleared and can_clear_at(st,w2,L):
+                cleared.add((w2,L)); gems+=gem_drop(w2,L)
+        nw=max(unlocked)+1
+        if nw<7 and can_clear_at(st,nw,0) and money>=unlock_cost(nw):
+            money-=unlock_cost(nw); unlocked.add(nw)
+        if len(unlocked)>=5:
+            cand=[(trans_cost(w2,trans[w2]),w2) for w2 in unlocked
+                  if trans[w2]<MAX_TRANS and can_clear_at(st,w2,trans[w2]+1)]
+            cand=[c for c in cand if c[0]<=money]
+            if cand:
+                c,w2=min(cand); money-=c; trans[w2]+=1
+        if world_done is None and len(unlocked)==7: world_done=sessions
+        if trans_done is None and all(t==MAX_TRANS for t in trans): trans_done=sessions
+        if skill_done is None and skills_maxed(st): skill_done=sessions
+        if world_done and trans_done and skill_done: break
+    return world_done, trans_done, skill_done, sessions, len(cleared)
+
+def scn_runes():
+    global ACTIVE_RUNE
+    print("── 룬(키스톤) 효과 (축별 깨끗한 지표) ──")
+    print(f"  값: {RUNE_VAL}")
+    print("  ※ full 총세션은 그리디-초월 부작용으로 노이즈 큼 → world1 게이트 + 세션수입으로 비교")
+    print("  룬     | world1첫클 | 중반수입 | Δ | 후반수입 | Δ")
+    mid={"grass_density":15,"attack_power":10,"grass_quality":16}
+    late={"grass_density":30,"attack_power":20,"grass_quality":40,"attack_speed":5,"attack_range":10}
+    b_w1=b_im=b_il=None
+    for rune in [None,"onslaught","avarice","woodcutter","sowing","bloom"]:
+        ACTIVE_RUNE=rune; _pu_cache.clear()
+        fc=first_clear_data(); w1=fc[0][0] if 0 in fc else 0
+        im=simulate_session(mid,0,0)[0]; il=simulate_session(late,0,0)[0]
+        if rune is None: b_w1,b_im,b_il=w1,im,il
+        label={None:"무룬","onslaught":"맹공","avarice":"축재","woodcutter":"벌목꾼","sowing":"파종","bloom":"만개"}[rune]
+        dm=f"+{(im/b_im-1)*100:.0f}%" if rune else ""; dl=f"+{(il/b_il-1)*100:.0f}%" if rune else ""
+        gate=f"(-{b_w1-w1})" if rune else ""
+        print(f"  {label:6s} | {w1}세션 {gate:5s} | ${im:6.0f} | {dm:4s} | ${il:7.0f} | {dl}")
+    ACTIVE_RUNE=None; _pu_cache.clear()
+    print("  → 맹공=후반 파밍↑ / 축재=전구간 코인↑ / 벌목꾼·파종=world1 게이트↓ / 만개=파워업 빌드로 수입↑")
+
 def scn_full(verbose=False):
     print(f"── 풀 이코노미 (월드+초월+보석+스킬, 숫자 세션루프) ──  [스킬 맥스 필요 보석={GEMS_NEEDED}]")
     st={}; money=0; gems=0; gem_unlocked=set()
@@ -658,7 +720,7 @@ def scn_full(verbose=False):
 if __name__=="__main__":
     ap=argparse.ArgumentParser(description="v2 밸런싱 시뮬")
     ap.add_argument("scenario", nargs="?", default="full",
-                    choices=["session","pacing","progression","full","tune","powerups","goomok"])
+                    choices=["session","pacing","progression","full","tune","powerups","goomok","runes"])
     a=ap.parse_args()
     {"session":scn_session,"pacing":scn_pacing,"progression":scn_progression,
-     "full":scn_full,"tune":scn_tune,"powerups":scn_powerups,"goomok":scn_goomok}[a.scenario]()
+     "full":scn_full,"tune":scn_tune,"powerups":scn_powerups,"goomok":scn_goomok,"runes":scn_runes}[a.scenario]()
