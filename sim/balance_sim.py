@@ -24,11 +24,18 @@ import argparse, math
 # ═══════════════════════════════ CONFIG (튜닝은 여기) ═══════════════════════════════
 SESSION_TIME   = 45.0     # 세션 길이(초, 세션시간 스킬 전)
 TICK_DT        = 0.05     # 시뮬 틱(초)
-GOOMOK_HP_BASE = 600.0    # 월드1 거목 HP (크릿·거목피해 DPS 반영 → 클리어 ~7세션)
+GOOMOK_HP_BASE = 900.0    # 월드1 거목 HP (크릿·거목피해+인런 파워업 DPS 반영 → 클리어 ~7세션)
 GOOMOK_KILL_FRACTION = 0.55  # 세션 중 거목 전투에 쓰는 시간 비율
 WORLD2_COST    = 100      # (표시용) 월드2 해금 비용
-POWERUP_COIN_MAX_BONUS = 0.4  # 인런 파워업 코인 배율: 세션Lv 10에서 +40%(1.4x). 초반(저Lv)은 비례 축소
+POWERUP_COIN_MAX_BONUS = 0.4  # (구 근사, USE_POWERUPS=False일 때만) 세션Lv 10에서 +40%
 SPEND_FRAC = 0.6              # 매 세션 보유금의 이 비율은 스킬 재투자, 나머지는 진행(해금/초월) 저축
+
+# ── 파워업(인런) 모델 ──
+USE_POWERUPS   = True    # True=33종 파워업 드래프트+스탯 수정자 모델, False=구 coin_mult 근사
+PU_SEEDS       = 10      # 파워업 코인 배율 = 이 횟수만큼 랜덤 드래프트 평균
+PU_COIN_MULT_CAP = 2.0   # 파워업 코인 배율 상한(그리디-최적 픽 과대평가 + capacity 병목 스파이크 방지, 의도: 1.3~1.5 상시/최대 2x)
+POWERUP_GOOMOK_MULT = 1.5  # 거목전 인런 파워업+슬롯아이템의 DPS 기여(결정적 근사, 튜닝값)
+COIN_COST_MULT = 1.5     # 코인 비용 배수(스킬틱·해금·초월). 파워업 수입증가 흡수 → 월드해금~40/초월~55/스킬맥스~60 유지
 
 CHUNK          = 400.0
 CHUNK_AREA     = CHUNK*CHUNK
@@ -111,7 +118,7 @@ def tick_cost(sk,t):
     if lv>=len(tbl): return None
     b,p=tbl[lv]; c=b+sub*p
     if sk=="grass_density": c=int(c*DENSITY_COST_MULT)
-    return max(1,c)
+    return max(1,int(c*COIN_COST_MULT))
 
 DPS_SKILLS    = ["attack_power","attack_speed","crit_chance","crit_damage","goomok_dmg"]
 INCOME_SKILLS = ["grass_density","grass_quality","attack_count","golden_chance","attack_range","move_speed","session_time"]
@@ -125,39 +132,33 @@ def goomok_dps(st):
     return eff_damage(st)/s_attack_speed(st.get("attack_speed",0)) * s_goomok_dmg(st.get("goomok_dmg",0))
 def can_clear_goomok(st, goomok_hp):
     killt = s_session(st.get("session_time",0))*GOOMOK_KILL_FRACTION
-    return goomok_dps(st)*killt >= goomok_hp
+    dps = goomok_dps(st) * (POWERUP_GOOMOK_MULT if USE_POWERUPS else 1.0)  # 인런 파워업+슬롯아이템 기여
+    return dps*killt >= goomok_hp
 
 # ═══════════════════════════════ 세션 수입 (정상상태 해석 모델) ═══════════════════════════════
+def _analytic_rate(st, world, trans):
+    """정상상태 처치율/평균값 (파워업 미적용, 기본 스킬만). 반환 (rate, avg_val, avg_xp, T)."""
+    hp_mult = WORLD_HP_MULT[world]*(1+0.4*trans); rw_mult = WORLD_REWARD_MULT[world]*(1+0.5*trans)
+    R=s_attack_range(st.get("attack_range",0)); v=s_move(st.get("move_speed",0))
+    iv=s_attack_speed(st.get("attack_speed",0)); cnt=s_attack_count(st.get("attack_count",0))
+    dmg=eff_damage(st); dens=min(s_density(st.get("grass_density",0)),GRID_SIDE*GRID_SIDE); D=dens/CHUNK_AREA
+    dist=s_quality_dist(st.get("grass_quality",0)); gc=s_golden(st.get("golden_chance",0)); T=s_session(st.get("session_time",0))
+    avg_hp =(gc*GOLD[0]+(1-gc)*sum(dist[k]*GRASS[k][0] for k in range(5)))*hp_mult
+    avg_val=(gc*GOLD[1]+(1-gc)*sum(dist[k]*GRASS[k][1] for k in range(5)))*rw_mult
+    avg_xp = gc*GOLD_XP+(1-gc)*sum(dist[k]*GRASS_XP[k] for k in range(5))
+    rate=min(2*R*v*D, cnt/(math.ceil(avg_hp/max(1e-9,dmg))*iv))
+    return rate, avg_val, avg_xp, T
+
 def simulate_session(st, world=0, trans=0, want_xp=False):
-    """세션 수확 수입(정상상태 근사). 실제 플레이 = min(풀 유입 속도, 처치 캐파).
-    - 유입(encounter) = 공격원(반경 R)이 이동속도 v로 스와스를 훑음 = 2R·v·풀밀도D
-    - 캐파(capacity) = 스윙당 cnt개에 dmg → 초당 처치 = cnt / (ceil(HP/dmg) × 스윙간격)
-    - 실제 처치율 = min(유입, 캐파). (플레이어는 풀 있는 곳에 머물며 벤다고 가정)
+    """세션 수확 수입. 기본 정상상태 수입 × 인런 파워업 코인 배율(파워업 드래프트 모델).
     - trans(초월): 풀 HP ×(1+0.4L), 보상 ×(1+0.5L).
     반환: (코인, 처치수[, 세션XP])."""
-    hp_mult = WORLD_HP_MULT[world]*(1+0.4*trans); rw_mult = WORLD_REWARD_MULT[world]*(1+0.5*trans)
-    R   = s_attack_range(st.get("attack_range",0))
-    v   = s_move(st.get("move_speed",0))
-    iv  = s_attack_speed(st.get("attack_speed",0))
-    cnt = s_attack_count(st.get("attack_count",0))
-    dmg = eff_damage(st)
-    dens = min(s_density(st.get("grass_density",0)), GRID_SIDE*GRID_SIDE)
-    D   = dens / CHUNK_AREA
-    dist = s_quality_dist(st.get("grass_quality",0))
-    gc  = s_golden(st.get("golden_chance",0))
-    T   = s_session(st.get("session_time",0))
-
-    avg_hp  = (gc*GOLD[0] + (1-gc)*sum(dist[k]*GRASS[k][0] for k in range(5)))*hp_mult
-    avg_val = (gc*GOLD[1] + (1-gc)*sum(dist[k]*GRASS[k][1] for k in range(5)))*rw_mult
-    avg_xp  =  gc*GOLD_XP + (1-gc)*sum(dist[k]*GRASS_XP[k] for k in range(5))
-
-    encounter = 2*R*v*D
-    capacity  = cnt / (math.ceil(avg_hp/max(1e-9,dmg)) * iv)
-    rate = min(encounter, capacity)          # 초당 처치 풀 수
-    kills = rate*T
-    xp = kills*avg_xp
-    # 인런 파워업 코인 배율: 세션 레벨(획득 파워업 수)에 비례 (초반 낮음 → 성장 후 최대 +40%)
-    coin_mult = 1.0 + POWERUP_COIN_MAX_BONUS*(session_level(xp)/SESSION_LV_CAP)
+    rate, avg_val, avg_xp, T = _analytic_rate(st, world, trans)
+    kills = rate*T; xp = kills*avg_xp
+    if USE_POWERUPS:
+        coin_mult, _ = powerup_factors(st, world, trans)
+    else:
+        coin_mult = 1.0 + POWERUP_COIN_MAX_BONUS*(session_level(xp)/SESSION_LV_CAP)
     coins = kills*avg_val*coin_mult
     if want_xp: return coins, kills, xp
     return coins, kills
@@ -169,12 +170,155 @@ def session_level(xp):
         else: break
     return min(lv, SESSION_LV_CAP)
 
+# ═══════════════════════════════ 파워업 (인런 드래프트 + 스탯 수정자) ═══════════════════════════════
+import random as _random
+# powerups.md §4의 33종 파워업(지속). type: (weight, max_stacks, effect)
+#  effect 키: dmg/iv/R/v/val/D = 스택당 승수 | vadd/cc/cm/gc = 스택당 가산 | xp/cap = 승수
+#            hp = 유효체력 승수(1회) | overkill/reaper/snowball/compound/level_burst = 플래그
+#            goomok = 거목 DPS 승수(수입 무효) | income_dud = 수입 영향 없음(=거목/메타 전용)
+#            reroll/extra_choice/luck = 드래프트 개선(수입 marginal엔 미반영 → 보수적)
+PU = {
+ "sharp_blade":     (20,5,{"dmg":1.15}),
+ "pu_attack_speed": (20,5,{"iv":1/1.12}),
+ "pu_attack_range": (20,5,{"R":1.15}),
+ "timber":          (10,5,{"goomok":1.30,"income_dud":True}),
+ "chain_reaction":  ( 4,1,{"cap":1.30}),
+ "pu_crit_chance":  (10,5,{"cc":0.08}),
+ "pu_crit_damage":  (10,5,{"cm":0.40}),
+ "critical_reaper": (10,1,{"reaper":True}),
+ "execute":         ( 4,1,{"hp":0.80}),
+ "coin_value":      (20,5,{"val":1.15}),
+ "pu_magnet_range": (20,5,{"income_dud":True}),
+ "regrow_speed":    (20,5,{"D":1.10}),
+ "coin_leech":      (20,5,{"vadd":1.0}),
+ "combo_harvest":   ( 4,1,{"val":1.25}),
+ "interest":        (10,5,{"val":1.10}),
+ "overkill":        ( 4,1,{"overkill":True}),
+ "pu_golden_chance":(10,5,{"gc":0.02}),
+ "golden_luck":     (10,1,{"income_dud":True}),
+ "midas":           ( 4,1,{"val":1.05}),
+ "pu_move_speed":   (20,5,{"v":1.12}),
+ "momentum":        (10,1,{"dmg":1.25}),
+ "stun_resist":     (20,5,{"income_dud":True}),
+ "thorns":          ( 4,1,{"income_dud":True}),
+ "finale":          ( 4,1,{"val":1.08,"cap":1.03}),
+ "cursed_scythe":   ( 4,1,{"val":1.50,"xp":0.60}),
+ "level_burst":     (10,1,{"level_burst":True}),
+ "seed_blessing":   (10,1,{"val":1.05,"cap":1.03}),
+ "xp_gain":         (20,5,{"xp":1.20}),
+ "reroll":          (10,3,{"reroll":1,"income_dud":True}),
+ "extra_choice":    ( 4,1,{"extra_choice":1,"income_dud":True}),
+ "luck":            ( 4,1,{"luck":1,"income_dud":True}),
+ "snowball":        ( 4,1,{"snowball":0.02}),
+ "compound":        ( 1,1,{"compound":0.03}),
+}
+
+def _apply_pu(st, pu, kills, level, world, trans, dist):
+    """현재 파워업 보유(pu)로 수정된 (처치율, 처치당 코인, 처치당 XP)."""
+    hp_mult=WORLD_HP_MULT[world]*(1+0.4*trans); rw_mult=WORLD_REWARD_MULT[world]*(1+0.5*trans)
+    dmg_m=iv_m=R_m=v_m=val_m=D_m=hp_m=xp_m=cap_m=1.0; vadd=cc_add=cm_add=gc_add=0.0
+    allm=1.0; overkill=reaper=False
+    for ty,n in pu.items():
+        e=PU[ty][2]
+        if "dmg" in e: dmg_m*=e["dmg"]**n
+        if "iv"  in e: iv_m *=e["iv"]**n
+        if "R"   in e: R_m  *=e["R"]**n
+        if "v"   in e: v_m  *=e["v"]**n
+        if "val" in e: val_m*=e["val"]**n
+        if "D"   in e: D_m  *=e["D"]**n
+        if "cap" in e: cap_m*=e["cap"]**n
+        if "xp"  in e: xp_m *=e["xp"]**n
+        if "vadd"in e: vadd +=e["vadd"]*n
+        if "cc"  in e: cc_add+=e["cc"]*n
+        if "cm"  in e: cm_add+=e["cm"]*n
+        if "gc"  in e: gc_add+=e["gc"]*n
+        if "hp"  in e: hp_m *=e["hp"]
+        if "overkill" in e: overkill=True
+        if "reaper"   in e: reaper=True
+        if "snowball" in e: dmg_m*=(1+e["snowball"]*(kills/100.0))
+        if "compound" in e: allm*=(1+e["compound"]*(level-1))
+    dmg_m*=allm; R_m*=allm; v_m*=allm; val_m*=allm
+    base_dmg=s_attack_power(st.get("attack_power",0))*dmg_m
+    cc=min(1.0,s_crit_chance(st.get("crit_chance",0))+cc_add); cm=s_crit_mult(st.get("crit_damage",0))+cm_add
+    dmg=base_dmg*(1+cc*(cm-1))
+    R=s_attack_range(st.get("attack_range",0))*R_m; v=s_move(st.get("move_speed",0))*v_m
+    iv=s_attack_speed(st.get("attack_speed",0))*iv_m; cnt=s_attack_count(st.get("attack_count",0))
+    dens=min(s_density(st.get("grass_density",0)),GRID_SIDE*GRID_SIDE); D=dens/CHUNK_AREA*D_m
+    gc=min(1.0,s_golden(st.get("golden_chance",0))+gc_add)
+    avg_hp =(gc*GOLD[0]+(1-gc)*sum(dist[k]*GRASS[k][0] for k in range(5)))*hp_mult*hp_m
+    avg_val=(gc*GOLD[1]+(1-gc)*sum(dist[k]*GRASS[k][1] for k in range(5)))*rw_mult
+    avg_xp =(gc*GOLD_XP+(1-gc)*sum(dist[k]*GRASS_XP[k] for k in range(5)))*xp_m
+    if reaper: cap_m*=(1+cc*0.3)
+    rate=min(2*R*v*D, cnt/(math.ceil(avg_hp/max(1e-9,dmg))*iv)*cap_m)
+    val=avg_val*val_m+vadd
+    if overkill: val*=(1+min(1.0,max(0.0,dmg/max(1e-9,avg_hp)-1.0)))
+    return rate, val, avg_xp
+
+def _draft_pick(st, pu, rng, marginal):
+    avail=[t for t in PU if pu.get(t,0)<PU[t][1]]
+    if not avail: return None
+    has_luck=pu.get("luck",0)>0; n=4 if pu.get("extra_choice",0)>0 else 3; rr=pu.get("reroll",0)
+    def draw():
+        pool=avail[:]; wts=[PU[t][0]*(3.0 if (has_luck and PU[t][0]<=4) else 1.0) for t in pool]; out=[]
+        for _ in range(min(n,len(pool))):
+            tot=sum(wts); r=rng.random()*tot; acc=0.0
+            for i,w in enumerate(wts):
+                acc+=w
+                if r<=acc: out.append(pool.pop(i)); wts.pop(i); break
+        return out
+    offered=draw()
+    for _ in range(rr):
+        alt=draw()
+        if alt and max((marginal(t) for t in alt),default=-1)>max((marginal(t) for t in offered),default=-1):
+            offered=alt
+    return max(offered, key=lambda t:(marginal(t), PU[t][0])) if offered else None
+
+def _phased_session(st, world, trans, seed):
+    """세션을 레벨업 구간으로 나눠 시뮬(파워업 누적 램프 반영). 반환 코인."""
+    rng=_random.Random(seed); dist=s_quality_dist(st.get("grass_quality",0))
+    T=s_session(st.get("session_time",0)); pu={}; t=0.0; level=1; coins=0.0; kills=0.0
+    def marginal(ty):
+        r0,v0,_=_apply_pu(st,pu,kills,level,world,trans,dist); base=r0*v0
+        p2=dict(pu); p2[ty]=p2.get(ty,0)+1
+        r1,v1,_=_apply_pu(st,p2,kills,level,world,trans,dist); return r1*v1-base
+    while t<T-1e-9:
+        rate,val,xpk=_apply_pu(st,pu,kills,level,world,trans,dist)
+        if level<SESSION_LV_CAP:
+            xps=rate*xpk; dt_lv=SESSION_LV_NEED[level-1]/xps if xps>0 else 1e9
+        else: dt_lv=1e9
+        dt=min(dt_lv, T-t); coins+=rate*val*dt; kills+=rate*dt; t+=dt
+        if t<T-1e-9 and level<SESSION_LV_CAP:
+            level+=1
+            pick=_draft_pick(st,pu,rng,marginal)
+            if pick: pu[pick]=pu.get(pick,0)+1
+            if pu.get("level_burst",0):
+                _,v2,_=_apply_pu(st,pu,kills,level,world,trans,dist)
+                R=s_attack_range(st.get("attack_range",0)); dens=min(s_density(st.get("grass_density",0)),GRID_SIDE*GRID_SIDE)
+                ak=(dens/CHUNK_AREA)*math.pi*(2*R)**2; coins+=ak*v2; kills+=ak
+    return coins
+
+_pu_cache={}
+def powerup_factors(st, world, trans):
+    """(코인 배율, 거목 DPS 배율). 코인 배율 = PU_SEEDS회 랜덤 드래프트 평균 / 기본수입."""
+    if not USE_POWERUPS: return (1.0,1.0)
+    key=(tuple(sorted(st.items())), world, trans)
+    r=_pu_cache.get(key)
+    if r is not None: return r
+    rate,avg_val,_,T=_analytic_rate(st,world,trans); base=rate*avg_val*T
+    if base<=0: _pu_cache[key]=(1.0,POWERUP_GOOMOK_MULT); return _pu_cache[key]
+    tot=0.0
+    for s in range(PU_SEEDS):
+        tot+=_phased_session(st,world,trans,(hash(key)^(s*2654435761))&0x7fffffff)
+    cm=min(PU_COIN_MULT_CAP, (tot/PU_SEEDS)/base)
+    res=(cm, POWERUP_GOOMOK_MULT); _pu_cache[key]=res; return res
+
 # ═══════════════════════════════ 플레이어 구매 전략 ═══════════════════════════════
 # 실제 플레이 가정: 경제(수입)를 먼저 키워 돈을 빠르게 모으고(돈은 게이트 아님),
 # 남는 돈으로 공격(DPS)에 점진 투자 → 거목은 강해지는 데 시간이 걸림(거목이 게이트).
 PAYBACK_LIMIT = 3.0   # 수입 틱: 회수기간(세션) 이보다 짧으면 구매
 
-def _income_rate(st): return simulate_session(st, world=0)[0]
+def _income_rate(st):   # ROI 판단용 기본 수입(파워업 제외 → 빠름)
+    rate, avg_val, _, T = _analytic_rate(st, 0, 0); return rate*avg_val*T
 
 def buy(st, money, goomok_hp, reserve=0):
     """실제 방치형: 번 돈을 (reserve 남기고) 전부 재투자.
@@ -216,6 +360,34 @@ def buy(st, money, goomok_hp, reserve=0):
     return money
 
 # ═══════════════════════════════ 시나리오 ═══════════════════════════════
+def scn_powerups():
+    print(f"── 파워업 인런 모델 (드래프트 {PU_SEEDS}회 평균) ──")
+    print("  스킬상태별 코인 배율(파워업 有/無) + 대표 드래프트 결과")
+    states=[("무스킬",{}),
+            ("초반(밀도5)",{"grass_density":5}),
+            ("중반(밀도15+공10+등급16)",{"grass_density":15,"attack_power":10,"grass_quality":16}),
+            ("후반(밀도30+공20+등급40+속5)",{"grass_density":30,"attack_power":20,"grass_quality":40,"attack_speed":5,"attack_range":10})]
+    for label,st in states:
+        cm,gm=powerup_factors(st,0,0)
+        base=_income_rate(st)
+        print(f"  {label:30s} 기본수입 ${base:9.0f} | 코인배율 x{cm:.2f} → ${base*cm:9.0f} | 거목DPS x{gm:.2f}")
+    # 대표 세션 1회의 최종 드래프트 로드아웃 예시
+    print("\n  예시 로드아웃(후반 상태, seed 0):")
+    st={"grass_density":30,"attack_power":20,"grass_quality":40,"attack_speed":5,"attack_range":10}
+    rng=_random.Random(0); dist=s_quality_dist(st.get("grass_quality",0)); pu={}; t=0.0; level=1; kills=0.0
+    T=s_session(0)
+    def marg(ty):
+        r0,v0,_=_apply_pu(st,pu,kills,level,0,0,dist); p2=dict(pu); p2[ty]=p2.get(ty,0)+1
+        r1,v1,_=_apply_pu(st,p2,kills,level,0,0,dist); return r1*v1-r0*v0
+    while t<T-1e-9:
+        rate,val,xpk=_apply_pu(st,pu,kills,level,0,0,dist)
+        xps=rate*xpk; dt_lv=SESSION_LV_NEED[level-1]/xps if (level<SESSION_LV_CAP and xps>0) else 1e9
+        dt=min(dt_lv,T-t); kills+=rate*dt; t+=dt
+        if t<T-1e-9 and level<SESSION_LV_CAP:
+            level+=1; pick=_draft_pick(st,pu,rng,marg)
+            if pick: pu[pick]=pu.get(pick,0)+1
+    print(f"    세션Lv{level} | {dict(sorted(pu.items(), key=lambda x:-x[1]))}")
+
 def scn_session():
     print("── 단일 세션 수입 (월드1) ──")
     for label, st in [("무스킬",{}), ("밀도5",{"grass_density":5}),
@@ -227,7 +399,7 @@ def scn_session():
 def scn_pacing():
     print("── 월드1 페이싱 (거목 HP별) ──")
     print("  거목HP | 돈$100세션 | 거목클리어세션")
-    for hp in [280,320,350,380,450,600]:
+    for hp in [600,750,900,1050,1200]:
         st={}; money=0; earned=0; mr=None; clear=None
         for s in range(1,41):
             coins,_=simulate_session(st); money+=coins; earned+=coins
@@ -271,9 +443,10 @@ def game_level(kills, cap=15):
 MAX_TRANS = 3
 def goomok_hp_at(w, L): return GOOMOK_HP_BASE*GOOMOK_WORLD_SCALE[w]*(1+0.4*L)
 def can_clear_at(st, w, L): return can_clear_goomok(st, goomok_hp_at(w,L))
+def unlock_cost(w): return int(WORLD_UNLOCK_COST[w]*COIN_COST_MULT)  # 해금 비용(코인배수 반영)
 def trans_cost(w, L):  # 초월 L→L+1 비용 (사용자: ~월드4~5 해금 비용 수준)
     base = WORLD_UNLOCK_COST[min(w+2,6)]
-    return int(max(500, base)*(1+L))
+    return int(max(500, base)*(1+L)*COIN_COST_MULT)
 def gem_drop(w, L): return max(1, L)   # (w,L) 첫 클리어 보석(초월 레벨만큼, 최소1)
 
 # 보석으로 잠긴 스킬 상위 티어 (유저레벨: 보석수) — 원본 SKILL_GEM_COSTS(모델된 스킬만)
@@ -406,8 +579,8 @@ def scn_full(verbose=False):
                 cleared.add((w2,L)); gems+=gem_drop(w2,L)
         # 4) 다음 월드 해금(거목 클리어 + 코인)
         nw=max(unlocked)+1
-        if nw<7 and can_clear_at(st,nw,0) and money>=WORLD_UNLOCK_COST[nw]:
-            money-=WORLD_UNLOCK_COST[nw]; unlocked.add(nw)
+        if nw<7 and can_clear_at(st,nw,0) and money>=unlock_cost(nw):
+            money-=unlock_cost(nw); unlocked.add(nw)
         # 5) 초월(월드 5 도달 시 개방 — 해금된 월드만, 감당되고 클리어 가능하면 최저가 순)
         if len(unlocked)>=5:
             cand=[(trans_cost(w2,trans[w2]),w2) for w2 in unlocked
@@ -430,7 +603,7 @@ def scn_full(verbose=False):
 if __name__=="__main__":
     ap=argparse.ArgumentParser(description="v2 밸런싱 시뮬")
     ap.add_argument("scenario", nargs="?", default="full",
-                    choices=["session","pacing","progression","full","tune"])
+                    choices=["session","pacing","progression","full","tune","powerups"])
     a=ap.parse_args()
     {"session":scn_session,"pacing":scn_pacing,"progression":scn_progression,
-     "full":scn_full,"tune":scn_tune}[a.scenario]()
+     "full":scn_full,"tune":scn_tune,"powerups":scn_powerups}[a.scenario]()
