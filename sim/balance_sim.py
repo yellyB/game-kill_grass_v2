@@ -48,11 +48,17 @@ COIN_COST_MULT = 2.0     # 코인 비용 배수(스킬틱·해금·초월). 파�
 # ── 룬(키스톤) 모델 ── 세션당 1개 장착, 게임레벨로 점진 해금. 조건부는 실효(평균)값으로 근사.
 #  맹공=파밍 공격력↑(거목엔 X), 축재=코인↑(플랫), 벌목꾼=거목DPS↑(파밍 X),
 #  파종=씨앗수집↑(거목 조기등장), 만개=획득XP↑(파워업 더↑, 플랫)
-ACTIVE_RUNE = None   # 시뮬 장착 룬: None/onslaught/avarice/woodcutter/sowing/bloom
+ACTIVE_RUNE = None   # 시뮬 장착 룬: None/onslaught/avarice/woodcutter/sowing/bloom/windfury
 # 맹공=파밍 공격력 / 축재=코인 / 벌목꾼=거목DPS / 파종=씨앗수집 (단순 배율)
 # 만개=레벨업 XP+25% & 세션 최대레벨+2 (구조적 — _apply_pu/_phased_session에서 직접 처리, RUNE_VAL 미사용)
+# 질풍(windfury)=치명 적중마다 공속 누적 → 실효 공속보너스 = 치명확률 비례(아래 _rune_atkspd)
 RUNE_VAL = {"onslaught":0.15, "avarice":0.15, "woodcutter":0.30, "sowing":0.40}
+WINDFURY_MAX = 0.15       # 질풍 실효 최대 공속 보너스(치명 램프 유지 시) — 다른 룬 수준(~+15%)
+WINDFURY_CRIT_REF = 0.5   # 이 치명확률에서 최대치 도달(그 이하는 비례 축소)
 def _rune(name): return (1.0+RUNE_VAL[name]) if ACTIVE_RUNE==name else 1.0
+def _rune_atkspd(st):   # 질풍: 실효 공속 보너스(치명확률 비례 — 크리 자주 나야 램프 유지)
+    if ACTIVE_RUNE!="windfury": return 0.0
+    return WINDFURY_MAX*min(1.0, s_crit_chance(st.get("crit_chance",0))/WINDFURY_CRIT_REF)
 
 CHUNK          = 400.0
 CHUNK_AREA     = CHUNK*CHUNK
@@ -152,8 +158,8 @@ def eff_damage(st):
     d = s_attack_power(st.get("attack_power",0))
     cc = s_crit_chance(st.get("crit_chance",0)); cm = s_crit_mult(st.get("crit_damage",0))
     return d * (1 + cc*(cm-1))    # 크릿 기대 데미지
-def goomok_dps(st):   # 거목 DPS (벌목꾼 룬 반영; 맹공은 거목엔 X)
-    return eff_damage(st)/s_attack_speed(st.get("attack_speed",0)) * s_goomok_dmg(st.get("goomok_dmg",0)) * _rune("woodcutter")
+def goomok_dps(st):   # 거목 DPS (벌목꾼=거목피해, 질풍=공속. 맹공은 거목엔 X)
+    return eff_damage(st)/s_attack_speed(st.get("attack_speed",0))*(1+_rune_atkspd(st)) * s_goomok_dmg(st.get("goomok_dmg",0)) * _rune("woodcutter")
 def seed_rate(st):   # 초당 씨앗 수집 = 2×자석범위×이동속도×밀도 (파종 룬 반영)
     v=s_move(st.get("move_speed",0))
     magnet_eff=50.0+max(0.0,(v-300.0))/450.0*350.0  # 자석 50→400, 이동과 동반 성장(탐험 스킬 프록시)
@@ -172,7 +178,7 @@ def _analytic_rate(st, world, trans):
     """정상상태 처치율/평균값 (파워업 미적용, 기본 스킬만). 반환 (rate, avg_val, avg_xp, T)."""
     hp_mult = WORLD_HP_MULT[world]*(1+0.4*trans); rw_mult = WORLD_REWARD_MULT[world]*(1+0.5*trans)
     R=s_attack_range(st.get("attack_range",0)); v=s_move(st.get("move_speed",0))
-    iv=s_attack_speed(st.get("attack_speed",0)); cnt=s_attack_count(st.get("attack_count",0))
+    iv=s_attack_speed(st.get("attack_speed",0))/(1+_rune_atkspd(st)); cnt=s_attack_count(st.get("attack_count",0))
     dmg=eff_damage(st)*_rune("onslaught"); dens=min(s_density(st.get("grass_density",0)),GRID_SIDE*GRID_SIDE); D=dens/CHUNK_AREA
     dist=s_quality_dist(st.get("grass_quality",0)); gc=s_golden(st.get("golden_chance",0)); T=s_session(st.get("session_time",0))
     avg_hp =(gc*GOLD[0]+(1-gc)*sum(dist[k]*GRASS[k][0] for k in range(5)))*hp_mult
@@ -274,7 +280,7 @@ def _apply_pu(st, pu, kills, level, world, trans, dist):
     cc=min(1.0,s_crit_chance(st.get("crit_chance",0))+cc_add); cm=s_crit_mult(st.get("crit_damage",0))+cm_add
     dmg=base_dmg*(1+cc*(cm-1))
     R=s_attack_range(st.get("attack_range",0))*R_m; v=s_move(st.get("move_speed",0))*v_m
-    iv=s_attack_speed(st.get("attack_speed",0))*iv_m; cnt=s_attack_count(st.get("attack_count",0))
+    iv=s_attack_speed(st.get("attack_speed",0))*iv_m/(1+_rune_atkspd(st)); cnt=s_attack_count(st.get("attack_count",0))
     dens=min(s_density(st.get("grass_density",0)),GRID_SIDE*GRID_SIDE); D=dens/CHUNK_AREA*D_m
     gc=min(1.0,s_golden(st.get("golden_chance",0))+gc_add)
     avg_hp =(gc*GOLD[0]+(1-gc)*sum(dist[k]*GRASS[k][0] for k in range(5)))*hp_mult*hp_m
@@ -667,15 +673,15 @@ def scn_runes():
     print(f"  값: {RUNE_VAL}")
     print("  ※ full 총세션은 그리디-초월 부작용으로 노이즈 큼 → world1 게이트 + 세션수입으로 비교")
     print("  룬     | world1첫클 | 중반수입 | Δ | 후반수입 | Δ")
-    mid={"grass_density":15,"attack_power":10,"grass_quality":16}
-    late={"grass_density":30,"attack_power":20,"grass_quality":40,"attack_speed":5,"attack_range":10}
+    mid={"grass_density":15,"attack_power":10,"grass_quality":16,"crit_chance":6}
+    late={"grass_density":30,"attack_power":20,"grass_quality":40,"attack_speed":5,"attack_range":10,"crit_chance":10}
     b_w1=b_im=b_il=None
-    for rune in [None,"onslaught","avarice","woodcutter","sowing","bloom"]:
+    for rune in [None,"onslaught","avarice","woodcutter","sowing","bloom","windfury"]:
         ACTIVE_RUNE=rune; _pu_cache.clear()
         fc=first_clear_data(); w1=fc[0][0] if 0 in fc else 0
         im=simulate_session(mid,0,0)[0]; il=simulate_session(late,0,0)[0]
         if rune is None: b_w1,b_im,b_il=w1,im,il
-        label={None:"무룬","onslaught":"맹공","avarice":"축재","woodcutter":"벌목꾼","sowing":"파종","bloom":"만개"}[rune]
+        label={None:"무룬","onslaught":"맹공","avarice":"축재","woodcutter":"벌목꾼","sowing":"파종","bloom":"만개","windfury":"질풍"}[rune]
         dm=f"+{(im/b_im-1)*100:.0f}%" if rune else ""; dl=f"+{(il/b_il-1)*100:.0f}%" if rune else ""
         gate=f"(-{b_w1-w1})" if rune else ""
         print(f"  {label:6s} | {w1}세션 {gate:5s} | ${im:6.0f} | {dm:4s} | ${il:7.0f} | {dl}")
