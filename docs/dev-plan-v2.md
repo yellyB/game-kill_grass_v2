@@ -88,19 +88,21 @@ core/+시뮬  스켈레톤  입력  UI/i18n  콘텐츠  반응형  정리  빌�
 
 ---
 
-## Phase 0 — `core/` SSOT 구축 + 시뮬 이식 + 수치 freeze ⭐최우선
+## Phase 0 — `core/` SSOT 구축 + 시뮬 이식 + 수치 freeze ⭐최우선  ✅ **완료**
 
 목표: 밸런스 계산식을 GDScript 순수 로직 한 곳에 세우고, 게임과 헤드리스 시뮬이 공유. 파이썬 시뮬과 패리티 검증 후 수치 확정.
 
-| # | 작업 | 완료 기준 |
-|---|------|-----------|
-| 0-1 | 원본 baseline 수치 추출 | 풀 HP/보상/재생, 무기 공격력·비용, 스킬 비용, 월드 해금비용, 구 분노 게이지 값 확보 |
-| 0-2 | `core/` 레이아웃 설계 | 아래 구조 확정, 전부 RefCounted/정적, Node 의존 0 |
-| 0-3 | 데이터 레이어 | `core/data/*.gd` — 풀·무기·스킬·월드·파워업50·룬6·게임레벨·씨앗/정예 수치 |
-| 0-4 | 계산 레이어 | `stat_block/economy/progression/rng` — DPS/수입/처치율/세션곡선/게임레벨XP/씨앗게이트 이식 |
-| 0-5 | 헤드리스 러너 | `godot --headless --script res://sim/run_sim.gd full` 실행, core/ 호출 |
-| 0-6 | 패리티 검증 | GDScript 시뮬 ≈ 파이썬(월드해금/초월/스킬맥스/게임레벨 오차 허용) |
-| 0-7 | 수치 freeze | core/ 데이터 확정. balance_sim.py는 검증 도구로 보존 |
+| # | 작업 | 완료 기준 | 상태 |
+|---|------|-----------|---|
+| 0-1 | 원본 baseline 수치 추출 | 풀 HP/보상/재생, 무기 공격력·비용, 스킬 비용, 월드 해금비용, 분노 게이지 | ✅ (balance_sim.py에 이미 반영) |
+| 0-2 | `core/` 레이아웃 | RefCounted/정적, Node 의존 0, preload 참조 | ✅ |
+| 0-3 | 데이터 레이어 | `core/balance_data.gd` — 풀·월드·씨앗·곡선 상수 | ✅ |
+| 0-4 | 계산 레이어 | `skills/economy/progression` — DPS/수입/처치율/세션곡선/게임레벨XP/씨앗게이트 | ✅ |
+| 0-5 | 헤드리스 러너 | `sim/run_sim.gd` (skills/economy/progression 시나리오) | ✅ |
+| 0-6 | 패리티 검증 | **결정적 공식 3레이어 = balance_sim.py 바이트 단위 완전 일치** | ✅ |
+| 0-7 | 수치 freeze | core/ 데이터 확정. balance_sim.py = 검증/밸런싱 도구로 존치 | ✅ |
+
+> **완료 요약**: 결정적 밸런스 공식(skills/economy/progression)을 GDScript로 이식·검증 완료(`core/README.md`). **확률적 풀 이코노미 루프는 Python(balance_sim.py) 설계 도구로 존치** — RNG 파리티 불가 + 게임 런타임 불필요(파워업은 M2에서 StatBlock으로 실시간 적용). `stat_block.gd`·파워업/룬 데이터 테이블은 **M2에서 core/에 추가**.
 
 core/ 구조(안):
 ```
