@@ -118,11 +118,11 @@ func is_world_unlocked(world: int) -> bool:
 	return world in unlocked_worlds
 
 func can_unlock_next() -> bool:
-	var nw := unlocked_worlds.max() + 1
+	var nw: int = int(unlocked_worlds.max()) + 1
 	return nw < 7 and money >= Progression.unlock_cost(nw)
 
 func unlock_next_world() -> bool:
-	var nw := unlocked_worlds.max() + 1
+	var nw: int = int(unlocked_worlds.max()) + 1
 	if nw >= 7 or money < Progression.unlock_cost(nw):
 		return false
 	money -= Progression.unlock_cost(nw)
