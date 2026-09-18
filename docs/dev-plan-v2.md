@@ -1,7 +1,7 @@
 # 풀죽이기 v2 — 세부 개발 계획 (실행 로드맵)
 
 > 상태: 기획 확정(freeze 직전). 이 문서는 실제 구현 착수용 세부 실행 계획.
-> 상위 기획·설계 확정 내용은 `docs/pc-port-plan.md`, 밸런스 수치는 `sim/balance_sim.py` 참조.
+> 상위 기획·설계 확정 내용은 `docs/game-spec.md`, 밸런스 수치는 `sim/balance_sim.py`(→`core/`) 참조.
 > 원본(이식 대상) 코드: `../game-kill_grass` 및 git `HEAD 4cd58ca`.
 
 ## 전역 원칙 (에셋·UI·스타일)
@@ -144,7 +144,7 @@ sim/
 
 | 작업 |
 |------|
-| 미사용 몬스터 스크립트/씬/에셋 제거, docs/monsters.md 아카이브 |
+| 미사용 몬스터 잔재 제거: `scripts/monster.gd`·`monster_spawner.gd`(스폰부만 개편), `scripts/effects/*`(몬스터 이펙트 7종), `scenes/world/monster.tscn`, `resources/images/monster/`, 파워업 `monster_fury`·분노 전제 로직 / `docs/legacy/monsters.md` 아카이브됨 |
 | 창모드/전체화면 토글, 해상도 옵션, 그래픽/사운드 설정 |
 | 월드별 특성 샘플(바람/화염/배경파티클) 적용 여부 결정 |
 
