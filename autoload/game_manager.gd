@@ -58,6 +58,14 @@ func ticks(sk: String) -> int:
 func _st() -> Dictionary:
 	return upgrade_levels
 
+## 총 스킬 레벨(무기 게이트용) = 스킬별 유저레벨(틱/sub_max) 합
+func get_total_skill_level() -> int:
+	var total := 0
+	for sk in Skills.COSTS:
+		var sm: int = Skills.COSTS[sk][1]
+		total += ticks(sk) / sm
+	return total
+
 # ── 밸런스 getter (core/ 위임) ──
 func get_attack_range() -> float: return Skills.attack_range(ticks("attack_range"))
 func get_attack_interval() -> float: return Skills.attack_speed(ticks("attack_speed"))

@@ -11,6 +11,7 @@ func _ready() -> void:
 
 func save_game() -> void:
 	var data := GameManager.get_save_data()
+	data.merge(WeaponManager.get_save_data())
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file:
 		file.store_string(JSON.stringify(data, "\t"))
@@ -27,7 +28,9 @@ func load_game() -> void:
 	file.close()
 	var json := JSON.new()
 	if json.parse(text) == OK:
-		GameManager.load_save_data(json.get_data())
+		var d: Dictionary = json.get_data()
+		GameManager.load_save_data(d)
+		WeaponManager.load_save_data(d)
 		game_loaded.emit()
 
 func delete_save() -> void:
