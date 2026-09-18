@@ -5,6 +5,7 @@ extends SceneTree
 const Skills = preload("res://core/skills.gd")
 const Balance = preload("res://core/balance_data.gd")
 const Economy = preload("res://core/economy.gd")
+const Progression = preload("res://core/progression.gd")
 
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
@@ -16,9 +17,41 @@ func _initialize() -> void:
 			_scn_skills()
 		"economy":
 			_scn_economy()
+		"progression":
+			_scn_progression()
 		_:
 			print("unknown scenario: ", scenario)
 	quit()
+
+func _scn_progression() -> void:
+	print("# progression dump (core/progression.gd)")
+	# 세션 레벨: 누적 XP → 레벨
+	var xps := [0.0, 10.0, 100.0, 300.0, 700.0, 1300.0, 2000.0]
+	for xp in xps:
+		print("slevel xp=%.0f -> %d" % [xp, Progression.session_level(xp)])
+	# 세션 레벨 필요치
+	var needs := []
+	for l in range(1, Balance.SESSION_LV_CAP):
+		needs.append("%.3f" % Progression.slevel_need(l))
+	print("slevel_need: [%s]" % ", ".join(needs))
+	# 게임 레벨 XP
+	for i in range(7):
+		print("goomok_xp w%d tr0=%.3f tr3=%.3f" % [i, Progression.goomok_xp(i, 0), Progression.goomok_xp(i, 3)])
+	# 게임 레벨 임계 (total_xp=4561 기준)
+	var total := 4561.0
+	var thr := []
+	for L in range(1, Balance.GLEVEL_CAP + 1):
+		thr.append("%.1f" % Progression.glevel_threshold(total, L))
+	print("glevel_threshold(total=4561): [%s]" % ", ".join(thr))
+	# 비용
+	var uc := []
+	var tc := []
+	for w in range(1, 7):
+		uc.append(str(Progression.unlock_cost(w)))
+	for w in range(7):
+		tc.append(str(Progression.trans_cost(w, 0)))
+	print("unlock_cost w2-7: [%s]" % ", ".join(uc))
+	print("trans_cost L0 w1-7: [%s]" % ", ".join(tc))
 
 func _scn_economy() -> void:
 	print("# economy dump (core/economy.gd)")
