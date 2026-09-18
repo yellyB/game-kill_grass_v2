@@ -45,7 +45,7 @@ SPEND_FRAC = 0.6              # 매 세션 보유금의 이 비율은 스킬 재
 USE_POWERUPS   = True    # True=33종 파워업 드래프트+스탯 수정자 모델, False=구 coin_mult 근사
 PU_SEEDS       = 10      # 파워업 코인 배율 = 이 횟수만큼 랜덤 드래프트 평균 (상한 없음 — 밸런스는 코인비용으로)
 POWERUP_GOOMOK_MULT = 1.5  # 거목전 인런 파워업+슬롯아이템의 DPS 기여(결정적 근사, 튜닝값)
-COIN_COST_MULT = 1.40    # 코인 비용 배수(스킬틱·해금·초월). 파워업+씨앗+경제너프+세션곡선 수정 반영 → 월드해금 40/초월 55/스킬맥스 54 (셋이 근접 마무리)
+COIN_COST_MULT = 1.70    # 코인 비용 배수(스킬틱·해금·초월). 정예=씨앗 모델 반영 → 월드해금 49/초월 55/스킬맥스 55 (월드당 ~7세션, 셋 근접)
 
 # ── 룬(키스톤) 모델 ── 세션당 1개 장착, 게임레벨로 점진 해금. 조건부는 실효(평균)값으로 근사.
 #  맹공=파밍 공격력↑(거목엔 X), 축재=코인↑(플랫), 벌목꾼=거목DPS↑(파밍 X),
@@ -85,10 +85,12 @@ WORLD_UNLOCK_COST = [0, 24000, 60000, 105000, 180000, 420000, 840000]  # 시뮬 
 # 풀 HP 배율을 그대로 쓰면 후반 거목이 시시함 → 거목 전용 가파른 스케일(격파 소요 ~10초 목표로 역산)
 GOOMOK_WORLD_SCALE = [1.0, 3.5, 9.0, 15.0, 16.0, 33.0, 36.0]  # 격파소요 월드1~22초/월드2~7~10초 목표 역산(시뮬 수렴)
 
-# 거목 소환 씨앗: 월드별 필요 개수(3→30, 선형 보간) + 필드 수집 모델
-SEED_NEED = [3, 8, 12, 17, 21, 26, 30]   # 월드1~7 거목 소환 필요 씨앗 수 (사용자: 3→30)
-SEED_DENSITY = 4.5e-6   # 필드 씨앗 밀도(개/area). 수집/초 = 2×자석범위×이동속도×밀도 (코인 자석 로직 재사용)
-                        # N이 10배(3→30) 느는 걸 자석(8배)+이동(2.5배) 동반 성장으로 상쇄
+# 거목 소환 씨앗: 정예 식물을 처치하면 씨앗 드롭. N개 모으면 거목 소환.
+# 정예 식물 = 그 시점 풀 평균 체력 ×2, 산재 스폰. 씨앗만 드롭(1마리=1씨앗). "정예 등장확률" 스킬로 밀도↑.
+SEED_NEED = [3, 8, 12, 17, 21, 26, 30]   # 월드1~7 거목 소환 필요 씨앗 수 = 정예 처치 수 (사용자: 3→30)
+ELITE_HP_MULT = 2.0     # 정예 식물 HP = 풀 평균 체력 × 이 배수
+ELITE_DENSITY = 4.0e-6  # 정예 밀도(월드1 기준). 월드별로 N에 비례 증가(더 위험=정예 많음) → 거목 등장 일정
+def elite_density(world): return ELITE_DENSITY*(SEED_NEED[world]/SEED_NEED[0])
 
 # 세션 레벨(인런) XP 곡선: 벤 풀 티어 XP + 레벨업 필요치 (cap 10)
 # 실제 세션 처치가 수백~수천이라 낮은 곡선은 초중반에 즉시 캡 → 곡선을 가파르게(누적 ^p).
@@ -172,15 +174,26 @@ def eff_damage(st):
     return d * (1 + cc*(cm-1))    # 크릿 기대 데미지
 def goomok_dps(st):   # 거목 DPS (벌목꾼=거목피해, 질풍=공속. 맹공은 거목엔 X)
     return eff_damage(st)/s_attack_speed(st.get("attack_speed",0))*(1+_rune_atkspd(st)) * s_goomok_dmg(st.get("goomok_dmg",0)) * _rune("woodcutter")
-def seed_rate(st):   # 초당 씨앗 수집 = 2×자석범위×이동속도×밀도 (파종 룬 반영)
-    v=s_move(st.get("move_speed",0))
-    magnet_eff=50.0+max(0.0,(v-300.0))/450.0*350.0  # 자석 50→400, 이동과 동반 성장(탐험 스킬 프록시)
-    return 2*magnet_eff*v*SEED_DENSITY*_rune("sowing")
-def goomok_summon_time(st, world):   # 씨앗 N개 모을 때까지(초) = 거목 등장 시점
-    r=seed_rate(st); return SEED_NEED[world]/r if r>0 else 1e9
-def can_clear_goomok(st, goomok_hp, world=0):
+def _avg_grass_hp(st, world, trans):
+    hp_mult=WORLD_HP_MULT[world]*(1+0.4*trans)
+    dist=s_quality_dist(st.get("grass_quality",0)); gc=s_golden(st.get("golden_chance",0))
+    return (gc*GOLD[0]+(1-gc)*sum(dist[k]*GRASS[k][0] for k in range(5)))*hp_mult
+def seed_rate(st, world=0, trans=0):
+    """초당 씨앗 수집 = 정예 식물 처치율. 씨앗당 시간 = 조우 간격 + 처치 시간.
+    정예 HP=풀평균×2 → 초반(저DPS)엔 처치가 느려 씨앗도 느림(거목 늦게 등장). 파종 룬 반영."""
+    R=s_attack_range(st.get("attack_range",0)); v=s_move(st.get("move_speed",0))
+    iv=s_attack_speed(st.get("attack_speed",0)); dmg=eff_damage(st)
+    encounter=2*R*v*elite_density(world)               # 정예 조우/초(월드별 밀도)
+    elite_hp=ELITE_HP_MULT*_avg_grass_hp(st,world,trans)
+    kill_time=math.ceil(elite_hp/max(1e-9,dmg))*iv     # 정예 1마리 처치 시간
+    if encounter<=0: return 0.0
+    t_per_seed=1.0/encounter + kill_time               # 조우 간격 + 처치
+    return _rune("sowing")/t_per_seed
+def goomok_summon_time(st, world, trans=0):   # 씨앗 N개 모을 때까지(초) = 거목 등장 시점
+    r=seed_rate(st,world,trans); return SEED_NEED[world]/r if r>0 else 1e9
+def can_clear_goomok(st, goomok_hp, world=0, trans=0):
     T = s_session(st.get("session_time",0))
-    window = T - goomok_summon_time(st, world)   # 거목 등장 후 남는 전투 시간
+    window = T - goomok_summon_time(st, world, trans)   # 거목 등장 후 남는 전투 시간
     if window <= 0: return False
     dps = goomok_dps(st) * (POWERUP_GOOMOK_MULT if USE_POWERUPS else 1.0)  # 인런 파워업+슬롯아이템 기여
     return dps*window >= goomok_hp
@@ -452,12 +465,12 @@ def first_clear_data():
 
 def scn_goomok():
     print("── 거목/씨앗 진단 (각 월드 첫 클리어 시점의 상태 기준) ──")
-    print(f"  씨앗 필요수(월드1~7) = {SEED_NEED} | 씨앗수집/s = 2×자석×이동×밀도")
+    print(f"  씨앗 필요수(월드1~7) = {SEED_NEED} | 씨앗=정예 식물 처치(HP=풀평균×{ELITE_HP_MULT:.0f})")
     print("  월드 첫클리어 | 이속 | 씨앗/s | 거목등장 | 세션 | 전투창 | 거목HP | DPS | 격파소요 | 판정")
     fc=first_clear_data()
     for w in range(7):
         if w not in fc: print(f"  {w+1}  | 미클리어"); continue
-        sess,sst=fc[w]; v=s_move(sst.get("move_speed",0)); r=seed_rate(sst); T=s_session(sst.get("session_time",0))
+        sess,sst=fc[w]; v=s_move(sst.get("move_speed",0)); r=seed_rate(sst,w); T=s_session(sst.get("session_time",0))
         summon=goomok_summon_time(sst,w); win=T-summon; hp=goomok_hp_at(w,0)
         dps=goomok_dps(sst)*POWERUP_GOOMOK_MULT; ttk=hp/dps if dps>0 else 9999
         ok="OK" if (win>0 and ttk<=win) else "부족"
@@ -562,7 +575,7 @@ def glevel_from_xp(cum_xp, total_xp):
 # ═══════════════════════════════ 초월 + 보석 경제 ═══════════════════════════════
 MAX_TRANS = 3
 def goomok_hp_at(w, L): return GOOMOK_HP_BASE*GOOMOK_WORLD_SCALE[w]*(1+0.4*L)
-def can_clear_at(st, w, L): return can_clear_goomok(st, goomok_hp_at(w,L), w)
+def can_clear_at(st, w, L): return can_clear_goomok(st, goomok_hp_at(w,L), w, L)
 def unlock_cost(w): return int(WORLD_UNLOCK_COST[w]*COIN_COST_MULT)  # 해금 비용(코인배수 반영)
 def trans_cost(w, L):  # 초월 L→L+1 비용 (사용자: ~월드4~5 해금 비용 수준)
     base = WORLD_UNLOCK_COST[min(w+2,6)]
