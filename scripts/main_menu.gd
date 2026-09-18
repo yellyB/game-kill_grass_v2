@@ -35,3 +35,8 @@ func _refresh() -> void:
 
 func _on_start() -> void:
 	SessionManager.start_session(GameManager.selected_world)
+
+func _unhandled_input(event: InputEvent) -> void:
+	# 스페이스 = 시작 버튼 효과 (M1-3)
+	if event.is_action_pressed("ui_accept") or (event is InputEventKey and event.pressed and event.keycode == KEY_SPACE):
+		_on_start()

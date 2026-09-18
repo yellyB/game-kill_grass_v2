@@ -132,5 +132,10 @@ func _end_session() -> void:
 	end_label.visible = true
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _ended and (event is InputEventKey or event is InputEventMouseButton) and event.is_pressed():
-		get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+	if _ended:
+		if (event is InputEventKey or event is InputEventMouseButton) and event.is_pressed():
+			get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+		return
+	# ESC = 나가기 (M1: 즉시 메뉴 복귀=세션 포기. 확인 다이얼로그는 M1.5에서)
+	if event.is_action_pressed("ui_cancel"):
+		SessionManager.quit_to_menu()
