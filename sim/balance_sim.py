@@ -533,12 +533,13 @@ def game_level(kills, cap=15):
     # 거목(첫클리어) 누적 → 레벨. 완주=전 초월 첫클리어 28회 ≈ Lv15 (2회당 1레벨)
     return min(cap, 1 + int(kills)//2)
 
-# ── 게임 레벨 XP 곡선 ── 세션 완료(기본) + 거목 처치(더 큼). 누적 임계로 레벨(Lv8≈진행 40%)
+# ── 게임 레벨 XP 곡선 ── 세션 완료(기본) + 거목 처치(체력 높을수록↑). 누적 임계로 레벨.
+# 1 세션 ≈ 1 거목 처치(반복 재클리어 포함, run_full xp_clears). 거목 XP는 HP 비례하되 √로 압축(스킵 방지).
 GLEVEL_CAP = 15
-GLEVEL_XP_CURVE_P = 2.5    # 임계 곡선 지수(>1=초반 빠르게/후반 완만). Lv8≈진행 40%에 맞춤
-GLEVEL_SESSION_XP = 10.0   # 세션 완료당 기본 XP
-GLEVEL_GOOMOK_XP  = 40.0   # 거목 처치당 XP(세션보다 큼)
-def goomok_xp(w, L): return GLEVEL_GOOMOK_XP   # 거목 처치 XP(균등 — 곡선 매끄럽게)
+GLEVEL_XP_CURVE_P = 3.2    # 임계 곡선 지수(>1=초반 빠르게/후반 완만). Lv8≈진행 41%, 스킵 없음
+GLEVEL_SESSION_XP = 5.0    # 세션 완료(거목 못 잡아도) 기본 XP
+GLEVEL_GOOMOK_K   = 1.0    # 거목 XP = K × √(거목HP) → HP 높은 후반 거목일수록 XP↑, √로 완만(스킵 방지)
+def goomok_xp(w, L): return GLEVEL_GOOMOK_K*math.sqrt(goomok_hp_at(w,L))  # 체력 비례(압축)
 def glevel_threshold(total_xp, lv):  # Lv 도달 누적 XP 임계(Lv15=total)
     return total_xp*((lv-1)/(GLEVEL_CAP-1))**GLEVEL_XP_CURVE_P
 def glevel_from_xp(cum_xp, total_xp):
@@ -667,9 +668,11 @@ def scn_tune(target=7):
     print(f"\n  권장 해금비용(월드2~7) = {unlock_rec[1:]}")
     print(f"  → 월드 전체 해금 ≈ {total}세션 (각 {target}세션) | 최종 스킬맥스 {skill_max_pct(st):.0f}%")
 
-def run_full(timeline=None):
+def run_full(timeline=None, xp_clears=None):
     """풀 이코노미 루프 실행 → (world_done, trans_done, skill_done, sessions, cleared수) 반환.
-    timeline 리스트 전달 시 거목 첫클리어를 (세션, 월드, 초월)로 기록."""
+    timeline: 거목 '첫'클리어 (세션,월드,초월) 기록(보석·마일스톤용).
+    xp_clears: '매 세션' 플레이 월드 거목 클리어(반복 포함) 기록 → 게임레벨 XP용.
+      (1 세션 = 씨앗 모아 거목 격파 = 1 클리어. 한 월드를 여러 번 재클리어)."""
     st={}; money=0; gems=0; gem_unlocked=set()
     unlocked={0}; trans=[0]*7; cleared=set()
     sessions=0; world_done=None; skill_done=None; trans_done=None
@@ -680,6 +683,9 @@ def run_full(timeline=None):
         budget=money*SPEND_FRAC
         left,gems=buy_full(st,budget,gems,gem_unlocked, goomok_hp_at(w,trans[w]), w)
         money-=(budget-left)
+        # 이번 세션 플레이 월드의 거목을 잡을 수 있으면 = 이 세션은 '거목 클리어'(반복 포함)
+        if xp_clears is not None and can_clear_at(st,w,trans[w]):
+            xp_clears.append((sessions,w,trans[w]))
         for w2 in list(unlocked):
             L=trans[w2]
             if (w2,L) not in cleared and can_clear_at(st,w2,L):
@@ -700,11 +706,12 @@ def run_full(timeline=None):
         if world_done and trans_done and skill_done: break
     return world_done, trans_done, skill_done, sessions, len(cleared)
 
-def _glevel_timeline(tl, total):
-    """세션별 누적 게임레벨 XP → 각 레벨 도달 세션. (세션당 기본XP + 거목 처치XP)"""
+def _glevel_timeline(xpc, total):
+    """세션별 누적 게임레벨 XP → 각 레벨 도달 세션. (세션당 기본XP + 매 세션 거목 처치XP)
+    xpc = run_full의 xp_clears(매 세션 거목 클리어, 반복 포함)."""
     clears_at={}
-    for (s,w,L) in tl: clears_at.setdefault(s,[]).append((w,L))
-    total_xp=total*GLEVEL_SESSION_XP + sum(goomok_xp(w,L) for _,w,L in tl)
+    for (s,w,L) in xpc: clears_at.setdefault(s,[]).append((w,L))
+    total_xp=total*GLEVEL_SESSION_XP + sum(goomok_xp(w,L) for _,w,L in xpc)
     cum=0.0; lv_sess={}
     for s in range(1,total+1):
         cum+=GLEVEL_SESSION_XP
@@ -743,17 +750,21 @@ def scn_watch():
     print("  ※ 흡혈=초반 정액+1 효과 확인 / 경제3종=곱연산 폭주 / 눈덩이·복리=세션길이 의존(여기선 단일세션)")
 
 def scn_glevel():
-    print(f"── 게임 레벨 XP 곡선 (세션 {GLEVEL_SESSION_XP:.0f}XP + 거목 {GLEVEL_GOOMOK_XP:.0f}XP, 곡선지수 p={GLEVEL_XP_CURVE_P}) ──")
-    tl=[]; wd,td,sd,total,_=run_full(tl)
-    lv_sess,total_xp=_glevel_timeline(tl,total)
-    print(f"  총 세션 {total} | 거목 첫클리어 {len(tl)}회 | 총 XP {total_xp:.0f}")
-    print("  레벨 | 도달세션 | 진행률% | XP임계")
+    print(f"── 게임 레벨 XP 곡선 (세션 {GLEVEL_SESSION_XP:.0f}XP + 거목 K×√HP, p={GLEVEL_XP_CURVE_P}) ──")
+    xpc=[]; wd,td,sd,total,_=run_full(None,xpc)
+    lv_sess,total_xp=_glevel_timeline(xpc,total)
+    print(f"  총 세션 {total} | 거목 클리어(반복 포함) {len(xpc)}회 | 총 XP {total_xp:.0f}")
+    print(f"  거목 XP 예: w1={goomok_xp(0,0):.0f} w4={goomok_xp(3,0):.0f} w7={goomok_xp(6,0):.0f} w7초월3={goomok_xp(6,3):.0f}")
+    print("  레벨 | 도달세션 | 진행률% | XP임계 | 이번레벨분")
+    prev=0
     for L in range(1,GLEVEL_CAP+1):
         s=lv_sess.get(L)
-        if s is None: print(f"   {L:2d}  |  (스킵)"); continue
         thr=glevel_threshold(total_xp,L) if L>1 else 0
+        inc=thr-prev; prev=thr
         mark=" ← 목표 40%" if L==8 else ""
-        print(f"   {L:2d}  |   {s:3d}   |  {100*s/total:4.0f}%  | {thr:7.0f}{mark}")
+        ss=f"{s:3d}" if s is not None else "skip"
+        pct=f"{100*s/total:4.0f}%" if s is not None else "  - "
+        print(f"   {L:2d}  |   {ss}   |  {pct}  | {thr:7.0f} | {inc:6.0f}{mark}")
 
 def scn_runes():
     global ACTIVE_RUNE
