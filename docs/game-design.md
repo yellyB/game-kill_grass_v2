@@ -1,4 +1,4 @@
-# 풀 좀 베겠습니다 (Excuse Me, Mowing through) - 게임 기획서
+# 풀죽이기 (Excuse Me, Mowing through) - 게임 기획서
 
 ## 디자인 철학
 
@@ -237,7 +237,7 @@
 
 ### 저장 경로
 - `user://savegame.json` (JSON 형식)
-- macOS: `~/Library/Application Support/Godot/app_userdata/풀 좀 베겠습니다/savegame.json`
+- macOS: `~/Library/Application Support/Godot/app_userdata/풀죽이기/savegame.json`
 
 ---
 

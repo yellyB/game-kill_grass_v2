@@ -1,4 +1,4 @@
-# 풀 좀 베겠습니다 (Excuse Me, Mowing through) - Godot 4.3 Idle Game
+# 풀죽이기 (Excuse Me, Mowing through) - Godot 4.3 Idle Game
 
 ## 프로젝트 개요
 풀을 베어서 돈을 모으는 방치형 모바일 게임. 플레이어가 이동하면 자동으로 범위 내 풀을 베고, 떨어진 코인을 수집하여 골드를 획득한다. 7개 월드를 해금하며 진행.
@@ -261,7 +261,7 @@ var local_attack_center = attack_center - grass_spawner.global_position
 ```
 
 ## 세이브 데이터
-- 위치: `~/Library/Application Support/Godot/app_userdata/풀 좀 베겠습니다/savegame.json`
+- 위치: `~/Library/Application Support/Godot/app_userdata/풀죽이기/savegame.json`
 - 저장 항목: money, upgrades, selected_world, unlocked_worlds, owned_keys, has_potion, world_strength_levels, owned_gems, unlocked_gem_skills, collected_gem_levels, has_ever_transcended
 
 ## 알려진 이슈 및 해결책
