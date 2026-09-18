@@ -28,7 +28,11 @@ func _ready() -> void:
 	center.add_child(_menu_btn("시작", _on_start))
 	center.add_child(_menu_btn("월드 선택", _open_world_select))
 	center.add_child(_menu_btn("강화", _open_upgrade))
+	center.add_child(_menu_btn("설정", _open_settings))
 	_refresh()
+
+func _open_settings() -> void:
+	add_child(preload("res://scripts/settings_popup.gd").new())
 
 func _menu_btn(text: String, cb: Callable) -> Button:
 	var b := Button.new()

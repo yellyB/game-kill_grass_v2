@@ -326,4 +326,29 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
 		return
 	if _state == PLAYING and event.is_action_pressed("ui_cancel"):
-		SessionManager.quit_to_menu()
+		_open_exit_dialog()
+
+func _open_exit_dialog() -> void:
+	if has_node("ExitDialog"):
+		return
+	var layer := CanvasLayer.new()
+	layer.name = "ExitDialog"; layer.layer = 8
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(layer)
+	get_tree().paused = true
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.7); dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(dim)
+	var box := VBoxContainer.new()
+	box.set_anchors_preset(Control.PRESET_CENTER)
+	box.add_theme_constant_override("separation", 16)
+	layer.add_child(box)
+	var b1 := Button.new(); b1.text = "처음으로"; b1.custom_minimum_size = Vector2(320, 80)
+	b1.pressed.connect(func(): get_tree().paused = false; SessionManager.quit_to_menu())
+	box.add_child(b1)
+	var b2 := Button.new(); b2.text = "게임 계속하기"; b2.custom_minimum_size = Vector2(320, 80)
+	b2.pressed.connect(func(): get_tree().paused = false; layer.queue_free())
+	box.add_child(b2)
+	var b3 := Button.new(); b3.text = "설정"; b3.custom_minimum_size = Vector2(320, 70)
+	b3.pressed.connect(func(): add_child(preload("res://scripts/settings_popup.gd").new()))
+	box.add_child(b3)
