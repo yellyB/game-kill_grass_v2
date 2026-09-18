@@ -45,7 +45,7 @@ SPEND_FRAC = 0.6              # 매 세션 보유금의 이 비율은 스킬 재
 USE_POWERUPS   = True    # True=33종 파워업 드래프트+스탯 수정자 모델, False=구 coin_mult 근사
 PU_SEEDS       = 10      # 파워업 코인 배율 = 이 횟수만큼 랜덤 드래프트 평균 (상한 없음 — 밸런스는 코인비용으로)
 POWERUP_GOOMOK_MULT = 1.5  # 거목전 인런 파워업+슬롯아이템의 DPS 기여(결정적 근사, 튜닝값)
-COIN_COST_MULT = 1.79    # 코인 비용 배수(스킬틱·해금·초월). 파워업+씨앗+경제너프 반영 → 월드해금 41/초월 56/스킬맥스 58 (목표 40/54/58)
+COIN_COST_MULT = 1.40    # 코인 비용 배수(스킬틱·해금·초월). 파워업+씨앗+경제너프+세션곡선 수정 반영 → 월드해금 40/초월 55/스킬맥스 54 (셋이 근접 마무리)
 
 # ── 룬(키스톤) 모델 ── 세션당 1개 장착, 게임레벨로 점진 해금. 조건부는 실효(평균)값으로 근사.
 #  맹공=파밍 공격력↑(거목엔 X), 축재=코인↑(플랫), 벌목꾼=거목DPS↑(파밍 X),
@@ -91,10 +91,20 @@ SEED_DENSITY = 4.5e-6   # 필드 씨앗 밀도(개/area). 수집/초 = 2×자석
                         # N이 10배(3→30) 느는 걸 자석(8배)+이동(2.5배) 동반 성장으로 상쇄
 
 # 세션 레벨(인런) XP 곡선: 벤 풀 티어 XP + 레벨업 필요치 (cap 10)
+# 실제 세션 처치가 수백~수천이라 낮은 곡선은 초중반에 즉시 캡 → 곡선을 가파르게(누적 ^p).
+# 목표: 무스킬~2렙 / 초중반~5 / 중반~7 / 후반~10 (성장하며 도달).
 GRASS_XP        = [1, 2, 3, 4, 5]   # 티어별 XP
 GOLD_XP         = 6
 SESSION_LV_CAP  = 10
-SESSION_LV_NEED = [2,4,6,8,10,12,14,16,18]  # Lv1→2 ... Lv9→10
+SLEVEL_TOTAL    = 1300.0   # Lv10(캡) 도달 누적 XP (후반 세션총XP~1300에 맞춤)
+SLEVEL_P        = 2.7      # 누적 곡선 지수(초반 저렴→후반 비쌈)
+def slevel_cum(L):   # Lv 도달 누적 XP (L=1→0, L=CAP→TOTAL)
+    return SLEVEL_TOTAL*((L-1)/(SESSION_LV_CAP-1))**SLEVEL_P
+def slevel_need(lv): # lv→lv+1 필요 XP. 캡 초과(만개룬 Lv10↑)는 마지막 증분의 절반(만개 +2캡 실제 도달 가능)
+    last=slevel_cum(SESSION_LV_CAP)-slevel_cum(SESSION_LV_CAP-1)
+    if lv>=SESSION_LV_CAP: return last*0.5
+    return slevel_cum(lv+1)-slevel_cum(lv)
+SESSION_LV_NEED = [slevel_need(l) for l in range(1,SESSION_LV_CAP)]  # Lv1→2 ... Lv9→10
 
 # ═══════════════════════════════ 스킬 수치 (SKILLS) ═══════════════════════════════
 # 재조정값(v2): 수집 400 / 이동 750 / 세션 65초 / 황금 5%. 나머지 원본.
@@ -314,12 +324,12 @@ def _draft_pick(st, pu, rng, marginal):
             offered=alt
     return max(offered, key=lambda t:(marginal(t), PU[t][0])) if offered else None
 
-def _phased_session(st, world, trans, seed):
-    """세션을 레벨업 구간으로 나눠 시뮬(파워업 누적 램프 반영). 반환 코인."""
+def _phased_session(st, world, trans, seed, ret_level=False):
+    """세션을 레벨업 구간으로 나눠 시뮬(파워업 누적 램프 반영). 반환 코인(ret_level=True면 (코인,도달레벨))."""
     rng=_random.Random(seed); dist=s_quality_dist(st.get("grass_quality",0))
     T=s_session(st.get("session_time",0)); pu={}; t=0.0; level=1; coins=0.0; kills=0.0
     lvcap=SESSION_LV_CAP + (2 if ACTIVE_RUNE=="bloom" else 0)  # 만개: 세션 최대 레벨 +2
-    def need(lv): return 2*lv   # Lv→Lv+1 필요 XP (SESSION_LV_NEED와 동일, 상한 확장용 일반식)
+    def need(lv): return slevel_need(lv)   # Lv→Lv+1 필요 XP (가파른 누적 곡선)
     def marginal(ty):
         r0,v0,_=_apply_pu(st,pu,kills,level,world,trans,dist); base=r0*v0
         p2=dict(pu); p2[ty]=p2.get(ty,0)+1
@@ -338,7 +348,7 @@ def _phased_session(st, world, trans, seed):
                 _,v2,_=_apply_pu(st,pu,kills,level,world,trans,dist)
                 R=s_attack_range(st.get("attack_range",0)); dens=min(s_density(st.get("grass_density",0)),GRID_SIDE*GRID_SIDE)
                 ak=(dens/CHUNK_AREA)*math.pi*(2*R)**2; coins+=ak*v2; kills+=ak
-    return coins
+    return (coins, level) if ret_level else coins
 
 def _fixed_session_coins(st, pu_fixed, world=0, trans=0):
     """고정 파워업 로드아웃(pu_fixed)으로 세션 코인 적분(램프 반영, 드래프트 없음).
@@ -749,6 +759,30 @@ def scn_watch():
         print(row)
     print("  ※ 흡혈=초반 정액+1 효과 확인 / 경제3종=곱연산 폭주 / 눈덩이·복리=세션길이 의존(여기선 단일세션)")
 
+def scn_slevel():
+    global ACTIVE_RUNE
+    print("── 세션 레벨 재검증 (세션당 도달 레벨 = 레벨업 횟수) ──")
+    print(f"  세션 XP 곡선 SESSION_LV_NEED={SESSION_LV_NEED} (Lv1시작, cap {SESSION_LV_CAP}) | XP=벤 풀 티어가중")
+    print("  ※ 스킬 업글(처치율↑)·파워업 카드(램프)·룬 전부 반영 → 도달 세션레벨(PU_SEEDS 평균)")
+    # 진행 단계별 대표 스킬 상태
+    states=[("무스킬(첫세션)",{}),
+            ("초반(밀도5)",{"grass_density":5}),
+            ("초중반(밀도10+공5+등급8)",{"grass_density":10,"attack_power":5,"grass_quality":8,"attack_count":2}),
+            ("중반(밀도18+공10+등급16+속2)",{"grass_density":18,"attack_power":10,"grass_quality":16,"attack_count":4,"attack_speed":2}),
+            ("후반(밀도30+공20+등급40+속5)",{"grass_density":30,"attack_power":20,"grass_quality":40,"attack_count":6,"attack_speed":5,"attack_range":10,"crit_chance":10})]
+    def avg_level(st, rune):
+        ACTIVE_RUNE=rune; _pu_cache.clear()
+        tot=0
+        for s in range(PU_SEEDS):
+            _,lv=_phased_session(st,0,0,(s*2654435761)&0x7fffffff,ret_level=True); tot+=lv
+        return tot/PU_SEEDS
+    print(f"  {'상태':28s}| 무룬 | 만개룬 | 축재룬")
+    for label,st in states:
+        n=avg_level(st,None); b=avg_level(st,"bloom"); a=avg_level(st,"avarice")
+        print(f"  {label:28s}| {n:4.1f} | {b:5.1f}  | {a:5.1f}")
+    ACTIVE_RUNE=None; _pu_cache.clear()
+    print(f"  → 목표: 초반 1~2레벨/세션 → 성장하며 Lv{SESSION_LV_CAP} 도달(파워업 ~9회). 만개룬=+2 캡(12)")
+
 def scn_glevel():
     print(f"── 게임 레벨 XP 곡선 (세션 {GLEVEL_SESSION_XP:.0f}XP + 거목 K×√HP, p={GLEVEL_XP_CURVE_P}) ──")
     xpc=[]; wd,td,sd,total,_=run_full(None,xpc)
@@ -832,7 +866,7 @@ def scn_full(verbose=False):
 if __name__=="__main__":
     ap=argparse.ArgumentParser(description="v2 밸런싱 시뮬")
     ap.add_argument("scenario", nargs="?", default="full",
-                    choices=["session","pacing","progression","full","tune","powerups","goomok","runes","glevel","watch"])
+                    choices=["session","pacing","progression","full","tune","powerups","goomok","runes","glevel","watch","slevel"])
     a=ap.parse_args()
     {"session":scn_session,"pacing":scn_pacing,"progression":scn_progression,
-     "full":scn_full,"tune":scn_tune,"powerups":scn_powerups,"goomok":scn_goomok,"runes":scn_runes,"glevel":scn_glevel,"watch":scn_watch}[a.scenario]()
+     "full":scn_full,"tune":scn_tune,"powerups":scn_powerups,"goomok":scn_goomok,"runes":scn_runes,"glevel":scn_glevel,"watch":scn_watch,"slevel":scn_slevel}[a.scenario]()
