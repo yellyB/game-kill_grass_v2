@@ -67,6 +67,25 @@ const GLEVEL_GOOMOK_K := 1.0          # 거목 XP = K × √(거목HP)
 # ── 초월 ──
 const MAX_TRANS := 3
 
+# ── 월드 메타(이름/테마색) ──
+const WORLD_NAMES := ["슬라임 늪", "들판", "기사의 성벽", "마법의 숲", "수정 호수", "고대 유적", "용의 봉우리"]
+const WORLD_COLORS := [
+	Color(0.13, 0.22, 0.15), Color(0.28, 0.22, 0.13), Color(0.20, 0.26, 0.30),
+	Color(0.16, 0.13, 0.26), Color(0.13, 0.28, 0.30), Color(0.22, 0.24, 0.13),
+	Color(0.26, 0.15, 0.13),
+]
+
+# ── 게임 레벨 총 XP(완주≈Lv15 목표) ──
+const GLEVEL_TOTAL_XP := 4600.0
+
+# ── 보석 게이트: 스킬 상위 티어(유저레벨) 해금 비용(보석 수) — balance_sim GEM_LOCK ──
+const GEM_LOCK := {
+	"attack_power": {4: 1, 6: 2, 8: 3}, "attack_speed": {4: 1, 5: 2, 6: 3}, "attack_range": {6: 1},
+	"crit_chance": {4: 1}, "goomok_dmg": {5: 1}, "crit_damage": {5: 1},
+	"grass_density": {5: 1, 7: 2}, "grass_quality": {5: 1, 7: 2}, "attack_count": {3: 1, 4: 2, 5: 3},
+	"golden_chance": {5: 1}, "move_speed": {5: 1}, "session_time": {3: 1, 5: 2},
+}
+
 # ── 정예 밀도(월드별) ──
 static func elite_density(world: int) -> float:
 	return ELITE_DENSITY * (float(SEED_NEED[world]) / float(SEED_NEED[0]))
