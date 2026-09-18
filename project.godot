@@ -22,6 +22,12 @@ run/main_scene=""
 config/quit_on_go_back=false
 config/features=PackedStringArray("4.6")
 
+[autoload]
+
+GameManager="*res://autoload/game_manager.gd"
+SaveManager="*res://autoload/save_manager.gd"
+SessionManager="*res://autoload/session_manager.gd"
+
 [display]
 
 window/size/viewport_width=1920
