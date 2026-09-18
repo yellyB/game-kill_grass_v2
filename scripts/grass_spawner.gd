@@ -106,8 +106,9 @@ func _rebuild_multimesh() -> void:
 		_mm.set_instance_transform_2d(i, Transform2D(0.0, gp))
 		_mm.set_instance_color(i, TIER_COLOR[g.tier])
 
-## 플레이어 주변 공격: eff_damage로 최대 count개 타격, 처치 시 [{pos, value}] 반환
-func attack_around(player_world_pos: Vector2, radius: float, count: int, dmg: float) -> Array:
+## 플레이어 주변 공격: eff_damage로 최대 count개 타격, 처치 시 [{pos, value, tier}] 반환.
+## cap_mult: 연쇄/리퍼 등 처치율 배수(확률적 추가 처치 근사).
+func attack_around(player_world_pos: Vector2, radius: float, count: int, dmg: float, cap_mult := 1.0) -> Array:
 	var hits := []
 	var candidates := []
 	for cell in _grass:
@@ -119,7 +120,8 @@ func attack_around(player_world_pos: Vector2, radius: float, count: int, dmg: fl
 		if d <= radius:
 			candidates.append([d, cell])
 	candidates.sort_custom(func(a, b): return a[0] < b[0])
-	var n: int = mini(count, candidates.size())
+	var eff_count := int(ceil(count * cap_mult))
+	var n: int = mini(eff_count, candidates.size())
 	for i in range(n):
 		var cell: Vector2i = candidates[i][1]
 		var g: Dictionary = _grass[cell]
@@ -127,5 +129,5 @@ func attack_around(player_world_pos: Vector2, radius: float, count: int, dmg: fl
 		if g.hp <= 0.0:
 			g.alive = false
 			g.regen_at = _time + _tier_regen(g.tier)
-			hits.append({"pos": g.pos, "value": _tier_value(g.tier)})
+			hits.append({"pos": g.pos, "value": _tier_value(g.tier), "tier": g.tier})
 	return hits

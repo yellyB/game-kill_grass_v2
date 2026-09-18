@@ -22,6 +22,7 @@ var world_strength_levels: Dictionary = {}   # world(int) → 초월 레벨
 var collected_gem_levels: Dictionary = {}     # "world:trans" → true (보석 1회 지급 추적)
 var unlocked_gem_skills: Array = []            # "skill:userlevel" 해금됨
 var game_level_xp: float = 0.0
+var equipped_rune: String = ""                 # 장착 룬(게임레벨로 해금, 기본 없음)
 
 signal gems_changed(gems: int)
 signal game_level_changed(level: int)
@@ -256,6 +257,7 @@ func get_save_data() -> Dictionary:
 		"collected_gem_levels": collected_gem_levels,
 		"unlocked_gem_skills": unlocked_gem_skills,
 		"game_level_xp": game_level_xp,
+		"equipped_rune": equipped_rune,
 		"bgm_enabled": bgm_enabled,
 		"sfx_enabled": sfx_enabled,
 		"vibration_enabled": vibration_enabled,
@@ -268,7 +270,11 @@ func load_save_data(data: Dictionary) -> void:
 	for sk in Skills.COSTS:
 		upgrade_levels[sk] = int(ul.get(sk, 0))
 	selected_world = int(data.get("selected_world", 0))
-	unlocked_worlds = data.get("unlocked_worlds", [0])
+	unlocked_worlds = []
+	for w in data.get("unlocked_worlds", [0]):
+		unlocked_worlds.append(int(w))
+	if unlocked_worlds.is_empty():
+		unlocked_worlds = [0]
 	owned_gems = int(data.get("owned_gems", 0))
 	var wsl: Dictionary = data.get("world_strength_levels", {})
 	world_strength_levels = {}
@@ -277,6 +283,7 @@ func load_save_data(data: Dictionary) -> void:
 	collected_gem_levels = data.get("collected_gem_levels", {})
 	unlocked_gem_skills = data.get("unlocked_gem_skills", [])
 	game_level_xp = float(data.get("game_level_xp", 0.0))
+	equipped_rune = str(data.get("equipped_rune", ""))
 	bgm_enabled = bool(data.get("bgm_enabled", true))
 	sfx_enabled = bool(data.get("sfx_enabled", true))
 	vibration_enabled = bool(data.get("vibration_enabled", true))
