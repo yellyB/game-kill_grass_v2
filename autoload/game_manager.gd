@@ -1053,9 +1053,9 @@ func apply_powerup(type: String) -> void:
     "extra_time":
       extra_time_requested.emit(5.0)
       powerup_acquired.emit(type, 0)
-    "double_or_nothing", "double_or_dust":
+    "double_or_nothing":
       _apply_double_or_nothing()
-    "growth_spurt", "monster_fury":
+    "growth_spurt":
       add_fury(get_fury_max() * 0.35 / get_fury_rate_mult())
       powerup_acquired.emit("growth_spurt", 0)
     "instant_level":
