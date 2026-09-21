@@ -11,6 +11,9 @@ var hp: float = 20.0
 var _dead: bool = false
 var _base_scale: Vector2 = Vector2.ONE
 var _hp_fill: Polygon2D = null
+var _hp_bar_root: Node2D = null
+var _hp_bar_timer: float = 0.0
+const _HP_BAR_SHOW_TIME: float = 1.5  # 풀과 동일: 마지막 피격 후 유지 시간
 const _HP_BAR_W: float = 56.0
 const _HP_BAR_Y: float = -52.0
 
@@ -54,15 +57,24 @@ func _build_visual() -> void:
 	core.polygon = pts
 	core.position = Vector2(0, -4)
 	visual.add_child(core)
-	# HP 바 (식물 위)
+	# HP 바 (식물 위) — 풀처럼 피격 시에만 표시
+	_hp_bar_root = Node2D.new()
+	_hp_bar_root.visible = false
+	visual.add_child(_hp_bar_root)
 	var bar_bg = Polygon2D.new()
 	bar_bg.color = Color(0.1, 0.1, 0.1, 0.7)
 	bar_bg.polygon = _rect(-_HP_BAR_W * 0.5, _HP_BAR_Y, _HP_BAR_W, 8)
-	visual.add_child(bar_bg)
+	_hp_bar_root.add_child(bar_bg)
 	_hp_fill = Polygon2D.new()
 	_hp_fill.color = Color(0.9, 0.35, 0.3)
 	_hp_fill.polygon = _rect(-_HP_BAR_W * 0.5, _HP_BAR_Y, _HP_BAR_W, 8)
-	visual.add_child(_hp_fill)
+	_hp_bar_root.add_child(_hp_fill)
+
+func _process(delta: float) -> void:
+	if _hp_bar_timer > 0.0:
+		_hp_bar_timer -= delta
+		if _hp_bar_timer <= 0.0 and _hp_bar_root:
+			_hp_bar_root.visible = false
 
 func _rect(x: float, y: float, w: float, h: float) -> PackedVector2Array:
 	return PackedVector2Array([Vector2(x, y), Vector2(x + w, y), Vector2(x + w, y + h), Vector2(x, y + h)])
@@ -77,6 +89,10 @@ func take_damage(dmg: int, _from_pos: Vector2) -> void:
 	if _dead:
 		return
 	hp -= float(dmg)
+	# 풀과 동일: 피격 시 바 표시 + 유지 타이머 리셋
+	if _hp_bar_root:
+		_hp_bar_root.visible = true
+	_hp_bar_timer = _HP_BAR_SHOW_TIME
 	_update_hp_bar()
 	# 피격 플래시
 	visual.modulate = Color(2, 2, 2)
