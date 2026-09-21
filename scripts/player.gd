@@ -505,6 +505,12 @@ func _check_monster_collision() -> void:
       _on_monster_hit(monster)
       return
 
+# 거목 공격 패턴 피격 → 스턴(피격 페널티 재사용). i-프레임 존중.
+func apply_attack_stun() -> void:
+  if is_invincible:
+    return
+  _on_monster_hit(self)
+
 func _on_monster_hit(monster: Node2D) -> void:
   is_hit_debuffed = true
   is_invincible = true
