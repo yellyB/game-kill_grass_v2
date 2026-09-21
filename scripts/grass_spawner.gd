@@ -470,7 +470,7 @@ func attack_grass_in_area(center: Vector2, radius: float) -> Dictionary:
   var total_max_health = 0
   var total_xp = 0  # 세션 레벨 XP = 벤 풀 티어 가중치 합(type+1: 새싹1..초강5, 황금6)
   var attacked_positions: Array = []
-  var base_damage = roundi(WeaponManager.get_weapon_damage() * GameManager.get_attack_power_mult())
+  var base_damage = roundi(WeaponManager.get_weapon_damage() * GameManager.get_attack_power_mult() * GameManager.get_rune_grass_mult())
   var is_crit = randf() < GameManager.get_crit_chance()
   var damage = base_damage
   if is_crit:

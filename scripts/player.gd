@@ -386,7 +386,7 @@ func _update_weapon_scale() -> void:
 
 func _attack_monsters_in_area(_center: Vector2, _radius: float) -> void:
   var base_damage = WeaponManager.get_weapon_damage()
-  var monster_mult = GameManager.get_monster_damage_mult() * GameManager.get_attack_power_mult() * GameManager.get_timber_mult()
+  var monster_mult = GameManager.get_monster_damage_mult() * GameManager.get_attack_power_mult() * GameManager.get_timber_mult() * GameManager.get_rune_goomok_mult()
   var is_crit = randf() < GameManager.get_crit_chance()
   var damage = roundi(base_damage * monster_mult)
   if is_crit:

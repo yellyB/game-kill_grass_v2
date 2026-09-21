@@ -200,6 +200,7 @@ func get_coin_value_mult() -> float:
   var m := 1.0 + pu("coin_value") * 0.12 + pu("coin_leech") * 0.08
   if pu("cursed_scythe") > 0: m += 0.5
   if pu("combo_harvest") > 0: m += minf(0.5, floori(combo_count / 10.0) * 0.05)
+  if active_rune == "avarice": m *= 1.15  # 축재 룬
   if timed_buffs.has("gold_rush"): m *= 2.0
   return m
 
@@ -221,6 +222,39 @@ func register_kills(n: int) -> void:
   session_kills += n
   combo_count += n
   combo_timer = 1.5  # 콤보 유지 시간(미수확 시 리셋)
+
+# ── 룬(키스톤): 세션당 1개 장착, 게임 레벨로 개방 ──
+var active_rune: String = ""
+
+const RUNE_DEFS := [
+  {"type": "avarice", "name": "축재", "desc": "코인 +15%", "unlock_lv": 8},
+  {"type": "woodcutter", "name": "벌목꾼", "desc": "거목·정예 피해 +30%", "unlock_lv": 8},
+  {"type": "sowing", "name": "파종", "desc": "씨앗 수집 +40%", "unlock_lv": 8},
+  {"type": "onslaught", "name": "맹공", "desc": "풀 공격력 +15%", "unlock_lv": 11},
+  {"type": "windfury", "name": "질풍", "desc": "치명률 비례 공속 증가", "unlock_lv": 11},
+  {"type": "bloom", "name": "만개", "desc": "세션 레벨 상한 +2", "unlock_lv": 11},
+]
+
+func is_rune_unlocked(rune: String) -> bool:
+  for r in RUNE_DEFS:
+    if r.type == rune:
+      return get_game_level() >= int(r.unlock_lv)
+  return false
+
+func set_active_rune(rune: String) -> void:
+  active_rune = rune
+  SaveManager.save_game()
+
+func get_rune_grass_mult() -> float:   # 맹공: 풀 공격력
+  return 1.15 if active_rune == "onslaught" else 1.0
+
+func get_rune_goomok_mult() -> float:  # 벌목꾼: 거목·정예 피해
+  return 1.30 if active_rune == "woodcutter" else 1.0
+
+func get_windfury_bonus() -> float:    # 질풍: 치명률 비례 공속
+  if active_rune != "windfury":
+    return 0.0
+  return Balance.WINDFURY_MAX * minf(1.0, get_crit_chance() / Balance.WINDFURY_CRIT_REF)
 
 # Timed buffs: { "gold_rush": remaining_seconds, ... }
 var timed_buffs: Dictionary = {}
@@ -275,9 +309,9 @@ var session_crown_acquired: bool = false  # 세션 중 황금 왕관 획득 여�
 
 const STRENGTH_MULTIPLIERS: Array = [1.0, 1.5, 2.0, 3.0]
 
-# 세션 레벨 상한 (기본 10, 만개 룬 장착 시 +2 — 룬은 후속 슬라이스)
+# 세션 레벨 상한 (기본 10, 만개 룬 장착 시 +2)
 func get_session_level_cap() -> int:
-  return Balance.SESSION_LV_CAP
+  return Balance.SESSION_LV_CAP + (2 if active_rune == "bloom" else 0)
 
 # 현재 레벨 → 다음 레벨 필요 XP (게이지 만충 기준). 게이지 %표시에 사용.
 func get_fury_max() -> float:
@@ -701,6 +735,9 @@ func add_seed(count: int = 1) -> void:
   # 씨앗 축복: 씨앗 획득 시 8초간 전 스탯 +15%
   if pu("seed_blessing") > 0:
     _start_timed_buff("seed_blessing", 8.0)
+  # 파종 룬: 40% 확률로 씨앗 +1
+  if active_rune == "sowing" and randf() < 0.40:
+    count += 1
   session_seeds += count
   var need = get_seed_need()
   seed_changed.emit(session_seeds, need)
@@ -912,6 +949,7 @@ func get_session_attack_speed_mult() -> float:
     mult *= 2.0  # +100%
   if timed_buffs.has("heavy_blade"):
     mult *= 0.8  # -20%
+  mult *= (1.0 + get_windfury_bonus())  # 질풍 룬
   mult *= get_global_active_mult()
   if hit_penalty_active:
     mult *= 0.5
@@ -1532,6 +1570,7 @@ func get_save_data() -> Dictionary:
     "collected_gem_levels": collected_gem_levels.duplicate(),
     "has_ever_transcended": has_ever_transcended,
     "game_xp": game_xp,
+    "active_rune": active_rune,
     "bgm_enabled": bgm_enabled,
     "sfx_enabled": sfx_enabled,
     "vibration_enabled": vibration_enabled,
@@ -1575,6 +1614,7 @@ func load_save_data(data: Dictionary) -> void:
     world_strength_levels[int(k)] = int(saved_strength[k])
   has_ever_transcended = data.get("has_ever_transcended", false)
   game_xp = float(data.get("game_xp", 0.0))
+  active_rune = str(data.get("active_rune", ""))
   # 기존 세이브 호환: 초월 레벨이 있으면 이미 초월한 것
   if not has_ever_transcended and not saved_strength.is_empty():
     has_ever_transcended = true
