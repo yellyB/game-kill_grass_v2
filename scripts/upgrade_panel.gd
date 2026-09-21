@@ -40,7 +40,6 @@ const NODE_INNER_PAD: float = 12.0
 const NODE_CORNER_RADIUS: int = 8
 const GROUP_GAP: float = 34.0
 const GROUP_HEADER_H: float = 65.0
-const PLACEHOLDER_ICON = preload("res://resources/images/skill/skill_temp.png")
 const SKILL_ICONS = {
   "attack_power": preload("res://resources/images/skill/attack_power.png"),
   "attack_speed": preload("res://resources/images/skill/attack_speed.png"),
@@ -772,7 +771,7 @@ func _create_skill_node(skill_type: String, state: String, node_size: float, gro
   # Skill icon (center) — hidden for locked states
   if not is_locked:
     var icon_rect = TextureRect.new()
-    icon_rect.texture = SKILL_ICONS.get(skill_type, PLACEHOLDER_ICON)
+    icon_rect.texture = SKILL_ICONS.get(skill_type, null)
     icon_rect.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
     icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
     icon_rect.anchors_preset = Control.PRESET_FULL_RECT
