@@ -1,9 +1,8 @@
-[gd_scene load_steps=12 format=3 uid="uid://cmain123"]
+[gd_scene load_steps=11 format=3 uid="uid://cmain123"]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/world_root.gd" id="2_world"]
 [ext_resource type="Script" path="res://scripts/grass_spawner.gd" id="3_spawner"]
-[ext_resource type="Script" path="res://scripts/monster_spawner.gd" id="4_mspawner"]
 [ext_resource type="Script" path="res://scripts/player.gd" id="5_player"]
 [ext_resource type="Script" path="res://scripts/game_camera.gd" id="6_camera"]
 [ext_resource type="PackedScene" uid="uid://chud123" path="res://scenes/ui/hud.tscn" id="7_hud"]
@@ -32,9 +31,6 @@ color = Color(0.18, 0.35, 0.18, 1)
 
 [node name="GrassSpawner" type="Node2D" parent="WorldRoot" groups=["grass_spawner"]]
 script = ExtResource("3_spawner")
-
-[node name="MonsterSpawner" type="Node2D" parent="WorldRoot"]
-script = ExtResource("4_mspawner")
 
 [node name="Player" type="CharacterBody2D" parent="." groups=["player"]]
 collision_mask = 2

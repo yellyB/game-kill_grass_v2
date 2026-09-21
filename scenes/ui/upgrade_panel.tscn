@@ -1,4 +1,4 @@
-[gd_scene load_steps=4 format=3 uid="uid://cupgrade123"]
+[gd_scene format=3 uid="uid://cupgrade123"]
 
 [ext_resource type="Script" path="res://scripts/upgrade_panel.gd" id="1_upgrade"]
 [ext_resource type="PackedScene" uid="uid://cku35fegcf51v" path="res://scenes/ui/money_display.tscn" id="3_money"]
