@@ -1,0 +1,93 @@
+[gd_scene load_steps=5 format=3 uid="uid://chud123"]
+
+[ext_resource type="Script" path="res://scripts/hud.gd" id="1_hud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/money_display.tscn" id="2_money"]
+[ext_resource type="Texture2D" path="res://resources/images/icon/timer.png" id="3_timer_icon"]
+[ext_resource type="Texture2D" path="res://resources/images/icon/monster.png" id="4_monster_icon"]
+
+[node name="HUD" type="CanvasLayer"]
+script = ExtResource("1_hud")
+
+[node name="PaddedArea" type="Control" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 40.0
+offset_top = 60.0
+offset_right = -40.0
+offset_bottom = -60.0
+mouse_filter = 2
+
+[node name="MoneyDisplay" parent="PaddedArea" instance=ExtResource("2_money")]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -350.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 50.0
+grow_horizontal = 0
+
+[node name="TimerHBox" type="HBoxContainer" parent="PaddedArea"]
+offset_top = 0.0
+offset_right = 500.0
+offset_bottom = 50.0
+theme_override_constants/separation = 10
+alignment = 0
+
+[node name="TimerIcon" type="TextureRect" parent="PaddedArea/TimerHBox"]
+layout_mode = 2
+texture = ExtResource("3_timer_icon")
+custom_minimum_size = Vector2(48, 48)
+expand_mode = 3
+stretch_mode = 5
+size_flags_vertical = 4
+
+[node name="TimerProgressBar" type="ProgressBar" parent="PaddedArea/TimerHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(300, 30)
+size_flags_vertical = 4
+value = 100.0
+show_percentage = false
+
+[node name="TimerLabel" type="Label" parent="PaddedArea/TimerHBox"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 48
+text = "60"
+
+[node name="FuryHBox" type="HBoxContainer" parent="PaddedArea"]
+offset_top = 65.0
+offset_right = 500.0
+offset_bottom = 115.0
+theme_override_constants/separation = 10
+alignment = 0
+
+[node name="FuryIcon" type="TextureRect" parent="PaddedArea/FuryHBox"]
+layout_mode = 2
+texture = ExtResource("4_monster_icon")
+custom_minimum_size = Vector2(48, 48)
+expand_mode = 3
+stretch_mode = 5
+size_flags_vertical = 4
+
+[node name="FuryProgressBar" type="ProgressBar" parent="PaddedArea/FuryHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(300, 30)
+size_flags_vertical = 4
+value = 0.0
+show_percentage = false
+
+[node name="FuryLabel" type="Label" parent="PaddedArea/FuryHBox"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 48
+text = "0"
+

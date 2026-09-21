@@ -1,354 +1,512 @@
 extends Node2D
-## M2 게임 세션 — 이동/베기/코인 + 정예·씨앗·거목 + 레벨업 3택 + 게임레벨.
-## 밸런스는 core/(StatBlock/Economy). 파워업 실시간 적용.
 
-const GrassSpawnerScript = preload("res://scripts/grass_spawner.gd")
-const StatBlock = preload("res://core/stat_block.gd")
-const Balance = preload("res://core/balance_data.gd")
-const Skills = preload("res://core/skills.gd")
-const PowerupData = preload("res://core/data/powerups.gd")
+const SESSION_TIME: float = 45.0
 
-enum { PLAYING, LEVELUP, ENDED }
+const BGM_PATHS: Array = [
+  "res://resources/sounds/bgm_슬라임늪.ogg",          # 0: 슬라임 늪
+  "res://resources/sounds/bgm_들판.ogg",              # 1: 들판
+  "res://resources/sounds/bgm_기사의성벽.ogg",         # 2: 기사의 성벽
+  "res://resources/sounds/bgm_마법의숲.ogg",           # 3: 마법의 숲
+  "res://resources/sounds/bgm_수정호수.ogg",           # 4: 수정 호수
+  "res://resources/sounds/bgm_고대유적.ogg",            # 5: 고대 유적
+  "res://resources/sounds/bgm_용의봉우리.ogg",          # 6: 용의 봉우리
+]
 
-var world_root: Node2D
-var grass: Node2D
-var player_visual: Node2D
-var cam: Camera2D
-var time_label: Label
-var money_label: Label
-var info_label: Label
-var end_label: Label
-var levelup_layer: CanvasLayer
+@onready var world_root: Node2D = $WorldRoot
+@onready var player: CharacterBody2D = $Player
+@onready var camera: Camera2D = $Player/GameCamera
+@onready var upgrade_panel: Control = $UpgradePanel/Control
+@onready var back_to_menu_btn: Button = $BackToMenuUI/BackToMenuBtn
+@onready var confirm_dialog: Control = $BackToMenuUI/ConfirmDialog
+@onready var session_end_overlay: Control = $BackToMenuUI/SessionEndOverlay
+@onready var touch_button: Button = $BackToMenuUI/SessionEndOverlay/TouchButton
+@onready var session_earnings_label: Label = $BackToMenuUI/SessionEndOverlay/SessionEarningsLabel
+@onready var bonus_label: Label = $BackToMenuUI/SessionEndOverlay/BonusLabel
+@onready var tap_to_return_label: Label = $BackToMenuUI/SessionEndOverlay/TapToReturnLabel
+@onready var timer_label: Label = $HUD/PaddedArea/TimerHBox/TimerLabel
+@onready var timer_progress: ProgressBar = $HUD/PaddedArea/TimerHBox/TimerProgressBar
 
-var _coins: Array = []
-var _elites: Array = []          # [{node, hp}]
-var _goomok: Dictionary = {}     # {node, hp, maxhp} or empty
-var _seeds := 0
-var _world := 0
-var _trans := 0
-var _pu: Dictionary = {}         # 파워업 type→stacks
-var _rune := ""
-var _kills := 0.0
-var _attack_accum := 0.0
-var _elite_accum := 0.0
-var _remaining := 45.0
-var _state := PLAYING
-var _rng := RandomNumberGenerator.new()
-var _eff: Dictionary = {}
-var _stun_timer := 0.0
-var _goomok_pattern_accum := 0.0
+var session_time_remaining: float = SESSION_TIME + GameManager.get_session_time_bonus()
+var session_total_time: float = SESSION_TIME + GameManager.get_session_time_bonus()
+var session_ended: bool = false
+var session_ready: bool = false
+var bgm_player: AudioStreamPlayer
+var _tick_sfx: AudioStreamPlayer = null
+var _last_tick_second: int = -1
+var _timer_warning_applied: bool = false
 
 func _ready() -> void:
-	_rng.randomize()
-	_world = GameManager.selected_world
-	_trans = GameManager.get_world_trans(_world)
-	_rune = GameManager.equipped_rune
-	GameManager.session_lv_cap = 10 + (2 if _rune == "bloom" else 0)
-	_remaining = GameManager.get_session_time()
+  camera.add_to_group("camera")
 
-	world_root = Node2D.new(); world_root.name = "WorldRoot"; add_child(world_root)
-	var bg := ColorRect.new()
-	bg.color = Balance.WORLD_COLORS[_world]
-	bg.size = Vector2(4000, 4000); bg.position = Vector2(-2000, -2000)
-	bg.z_index = -100
-	add_child(bg)
-	grass = GrassSpawnerScript.new(); grass.name = "GrassSpawner"; world_root.add_child(grass)
+  # Hide the toggle buttons on panels (moved to main menu)
+  upgrade_panel.set_toggle_button_visible(false)
 
-	player_visual = Node2D.new(); add_child(player_visual)
-	var body := Polygon2D.new()
-	body.polygon = PackedVector2Array([Vector2(-12,-16), Vector2(12,-16), Vector2(12,16), Vector2(-12,16)])
-	body.color = Color(0.95, 0.9, 0.85)
-	player_visual.add_child(body)
+  # Setup back to menu button and dialog
+  back_to_menu_btn.pressed.connect(_on_back_to_menu_pressed)
+  confirm_dialog.dialog_confirmed.connect(_on_confirm_back_to_menu)
+  confirm_dialog.dialog_cancelled.connect(_on_cancel_back_to_menu)
 
-	cam = Camera2D.new(); add_child(cam); cam.make_current()
-	_build_hud()
-	GameManager.level_up.connect(_on_level_up)
+  # Button styles
+  back_to_menu_btn.text = ""
+  back_to_menu_btn.icon = preload("res://resources/images/icon/go_home.png")
+  back_to_menu_btn.expand_icon = true
+  back_to_menu_btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+  GameManager.style_button(back_to_menu_btn, "muted")
 
-func _build_hud() -> void:
-	var layer := CanvasLayer.new(); add_child(layer)
-	time_label = _mk_label(layer, Vector2(20,16), 40)
-	money_label = _mk_label(layer, Vector2(20,64), 28)
-	info_label = _mk_label(layer, Vector2(20,104), 24)
-	end_label = _mk_label(layer, Vector2(0,460), 56)
-	end_label.size = Vector2(1920,200); end_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	end_label.visible = false
-	levelup_layer = CanvasLayer.new(); levelup_layer.layer = 5; add_child(levelup_layer); levelup_layer.visible = false
+  # Setup session end overlay
+  touch_button.pressed.connect(_on_session_end_touch)
 
-func _mk_label(parent: Node, pos: Vector2, size: int) -> Label:
-	var l := Label.new(); l.position = pos; l.add_theme_font_size_override("font_size", size)
-	parent.add_child(l); return l
+  # Extra time powerup
+  GameManager.extra_time_requested.connect(_on_extra_time)
+
+  # Boss key → session end
+  GameManager.boss_key_collected.connect(_on_boss_key_collected)
+
+  # Style progress bar
+  var bg_style = StyleBoxFlat.new()
+  bg_style.bg_color = Color(0.2, 0.2, 0.2, 0.5)
+  bg_style.set_corner_radius_all(6)
+  timer_progress.add_theme_stylebox_override("background", bg_style)
+  var fill_style = StyleBoxFlat.new()
+  fill_style.bg_color = Color(0.4, 0.8, 1.0)
+  fill_style.set_corner_radius_all(6)
+  timer_progress.add_theme_stylebox_override("fill", fill_style)
+
+  # Initialize timer display
+  update_timer_display()
+
+  SessionManager.start_session()
+
+  # 1초 후 세션 시작
+  get_tree().create_timer(1.0).timeout.connect(_on_session_ready)
+
+  # Start BGM
+  _start_bgm()
 
 func _process(delta: float) -> void:
-	if _state == ENDED or _state == LEVELUP:
-		return
-	_eff = StatBlock.effective(GameManager.upgrade_levels, _pu, _rune, _kills, GameManager.session_level, _world, _trans)
+  if session_ended or not session_ready:
+    return
 
-	# 스턴 중이면 이동 불가
-	if _stun_timer > 0.0:
-		_stun_timer -= delta
-	else:
-		var dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
-		world_root.position -= dir * _eff.move_speed * delta
+  session_time_remaining -= delta
+  if session_time_remaining <= 0:
+    session_time_remaining = 0
+    end_session()
 
-	var pw := -world_root.position
-	grass.update_field(pw, delta)
+  # 종료 5초 전부터 화면 흔들림
+  if session_time_remaining <= 5.0 and session_time_remaining > 0:
+    var intensity = (5.0 - session_time_remaining) / 5.0 * 0.4
+    camera.shake(intensity)
 
-	# 자동 공격(풀 + 정예 + 거목)
-	_attack_accum += delta
-	var interval: float = _eff.attack_interval
-	while _attack_accum >= interval:
-		_attack_accum -= interval
-		_do_attack(pw)
+  # 종료 10초 전부터 1초마다 틱톡 효과음
+  if session_time_remaining <= 10.0 and session_time_remaining > 0:
+    var sec = int(ceil(session_time_remaining))
+    if sec != _last_tick_second:
+      _last_tick_second = sec
+      _play_tick()
 
-	_maybe_spawn_elites(pw, delta)
-	_update_coins(delta, pw)
-	if not _goomok.is_empty():
-		_update_goomok(delta, pw)
+  update_timer_display()
 
-	_remaining -= delta
-	_update_hud()
-	if _remaining <= 0.0:
-		_end_session(false)
+func update_timer_display() -> void:
+  var seconds = int(ceil(session_time_remaining))
+  timer_label.text = str(seconds)
 
-func _do_attack(pw: Vector2) -> void:
-	var rng: float = _eff.attack_range
-	var cnt: int = _eff.attack_count
-	var dmg: float = _eff.eff_damage
-	# 풀
-	var hits: Array = grass.attack_around(pw, rng, cnt, dmg, _eff.cap_mult)
-	for h in hits:
-		_kills += 1.0
-		var val := int(h.value * _eff.coin_mult)
-		_spawn_coin(h.pos, val)
-		GameManager.add_level_xp(_grass_xp(h.tier))
-	# 정예(씨앗)
-	for e in _elites:
-		var en: Node2D = e.node
-		if en.position.distance_to(pw) <= rng:
-			e.hp -= dmg
-	_reap_elites()
-	# 거목
-	if not _goomok.is_empty():
-		var gn: Node2D = _goomok.node
-		if gn.position.distance_to(pw) <= rng + 60.0:
-			_goomok.hp -= dmg * _eff.goomok_dmg_mult * Balance.POWERUP_GOOMOK_MULT
+  # Update progress bar
+  timer_progress.value = clampf((session_time_remaining / session_total_time) * 100.0, 0.0, 100.0)
 
-func _grass_xp(tier: int) -> float:
-	return float(Balance.GOLD_XP) if tier == 5 else float(Balance.GRASS_XP[tier])
+  # Change color when time is low (apply once)
+  if seconds <= 10 and not _timer_warning_applied:
+    _timer_warning_applied = true
+    timer_label.add_theme_color_override("font_color", Color(1, 0.3, 0.3))
+    var fill_style = StyleBoxFlat.new()
+    fill_style.bg_color = Color(1, 0.3, 0.3)
+    fill_style.set_corner_radius_all(6)
+    timer_progress.add_theme_stylebox_override("fill", fill_style)
 
-func _maybe_spawn_elites(pw: Vector2, delta: float) -> void:
-	if not _goomok.is_empty():
-		return
-	# 정예 밀도(월드별)에 비례해 주기적으로 스폰(플레이어 주변)
-	_elite_accum += delta
-	var rate: float = Balance.elite_density(_world) * 2.0 * float(_eff.attack_range) * float(_eff.move_speed)  # 대략 조우율
-	var spawn_interval: float = (1.0 / maxf(0.05, rate)) if rate > 0.0 else 999.0
-	if _elite_accum >= spawn_interval and _elites.size() < 6:
-		_elite_accum = 0.0
-		_spawn_elite(pw)
+func _play_tick() -> void:
+  if not GameManager.sfx_enabled:
+    return
+  if not _tick_sfx:
+    _tick_sfx = AudioStreamPlayer.new()
+    _tick_sfx.stream = preload("res://resources/sounds/effect/clock_tick_tock.wav")
+    _tick_sfx.bus = "Master"
+    add_child(_tick_sfx)
+  _tick_sfx.play()
 
-func _spawn_elite(pw: Vector2) -> void:
-	var ang := _rng.randf() * TAU
-	var dist := _rng.randf_range(200.0, 500.0)
-	var pos := pw + Vector2(cos(ang), sin(ang)) * dist
-	var n := Polygon2D.new()
-	n.polygon = PackedVector2Array([Vector2(-16,-22), Vector2(16,-22), Vector2(20,20), Vector2(-20,20)])
-	n.color = Color(0.4, 0.7, 0.3)
-	n.position = pos
-	world_root.add_child(n)
-	var avg_hp := _avg_grass_hp()
-	_elites.append({"node": n, "hp": Balance.ELITE_HP_MULT * avg_hp})
+func _start_bgm() -> void:
+  var world = GameManager.selected_world
+  var path = BGM_PATHS[world] if world < BGM_PATHS.size() else BGM_PATHS[0]
+  bgm_player = AudioStreamPlayer.new()
+  bgm_player.stream = load(path)
+  bgm_player.volume_db = -10.0
+  bgm_player.process_mode = Node.PROCESS_MODE_ALWAYS
+  bgm_player.finished.connect(bgm_player.play)
+  add_child(bgm_player)
+  await get_tree().create_timer(1.0).timeout
+  if GameManager.bgm_enabled:
+    bgm_player.play()
 
-func _avg_grass_hp() -> float:
-	var dist: Array = GameManager.get_quality_dist()
-	var gc: float = GameManager.get_golden_chance() + float(_eff.get("gc_add", 0.0))
-	var s := 0.0
-	for k in range(5):
-		s += float(dist[k]) * float(Balance.GRASS[k][0])
-	return (gc * float(Balance.GOLD[0]) + (1.0 - gc) * s) * GameManager.get_world_hp_mult(_world)
+func end_session() -> void:
+  session_ended = true
+  get_tree().paused = true
+  back_to_menu_btn.visible = false
 
-func _reap_elites() -> void:
-	var i := _elites.size() - 1
-	while i >= 0:
-		if _elites[i].hp <= 0.0:
-			var en: Node2D = _elites[i].node
-			en.queue_free()
-			_elites.remove_at(i)
-			_seeds += 1
-			if _seeds >= Balance.SEED_NEED[_world] and _goomok.is_empty():
-				_spawn_goomok()
-		i -= 1
+  # Remove player hit overlay so it doesn't block session end touch
+  var player = get_tree().get_first_node_in_group("player")
+  if player and player.has_method("_remove_hit_overlay"):
+    player._remove_hit_overlay()
 
-func _spawn_goomok() -> void:
-	var pw := -world_root.position
-	var pos := pw + Vector2(0, -350)
-	var n := Polygon2D.new()
-	n.polygon = PackedVector2Array([Vector2(-60,-90), Vector2(60,-90), Vector2(80,70), Vector2(-80,70)])
-	n.color = Balance.WORLD_COLORS[_world].lightened(0.4)
-	n.position = pos
-	world_root.add_child(n)
-	var hp := Balance.GOOMOK_HP_BASE * float(Balance.GOOMOK_WORLD_SCALE[_world]) * (1.0 + 0.4 * _trans)
-	_goomok = {"node": n, "hp": hp, "maxhp": hp}
+  # Fade out BGM
+  if bgm_player:
+    var bgm_tween = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+    bgm_tween.tween_property(bgm_player, "volume_db", -40.0, 1.5)
+    bgm_tween.tween_callback(bgm_player.stop)
 
-func _update_goomok(delta: float, pw: Vector2) -> void:
-	# 공격 패턴(회전 덩굴 간이): 주기적으로 플레이어가 거목 근접+각도면 스턴
-	_goomok_pattern_accum += delta
-	var gn: Node2D = _goomok.node
-	if gn.position.distance_to(pw) < 140.0 and _goomok_pattern_accum > 3.0:
-		_goomok_pattern_accum = 0.0
-		var base_stun := 0.6
-		var resist := 0.0
-		if _pu.has("stun_resist"):
-			resist = minf(0.75, 0.25 * _pu["stun_resist"])
-		_stun_timer = base_stun * (1.0 - resist)
-	if _goomok.hp <= 0.0:
-		gn.queue_free()
-		_goomok = {}
-		GameManager.on_goomok_cleared(_world)
-		_try_unlock_world()
-		_end_session(true)
+  var earnings = GameManager.session_money
 
-func _try_unlock_world() -> void:
-	# 거목 클리어 자격 + 코인 충분 시 다음 월드 해금
-	if GameManager.can_unlock_next():
-		GameManager.unlock_next_world()
+  # Phase 1: Coins pop and disappear
+  await animate_coins_disappear()
 
-func _spawn_coin(world_pos: Vector2, value: int) -> void:
-	var n := Polygon2D.new()
-	n.polygon = PackedVector2Array([Vector2(0,-7), Vector2(7,0), Vector2(0,7), Vector2(-7,0)])
-	n.color = _coin_color(value)
-	n.position = world_pos
-	world_root.add_child(n)
-	_coins.append({"node": n, "value": value})
+  # Phase 2: Show overlay with animations
+  show_session_end_overlay(earnings)
 
-func _coin_color(v: int) -> Color:
-	if v >= 1000: return Color(0.6,0.9,1.0)
-	elif v >= 500: return Color(1.0,0.9,0.3)
-	elif v >= 100: return Color(0.85,0.85,0.9)
-	return Color(0.8,0.55,0.3)
+func animate_coins_disappear() -> void:
+  var coins = get_tree().get_nodes_in_group("coins")
 
-func _update_coins(delta: float, pw: Vector2) -> void:
-	var magnet: float = _eff.magnet_range
-	var i := _coins.size() - 1
-	while i >= 0:
-		var c: Dictionary = _coins[i]
-		var node: Node2D = c.node
-		var to_p := pw - node.position
-		var d := to_p.length()
-		if d < magnet:
-			node.position += to_p.normalized() * 900.0 * delta
-			if d < 24.0:
-				GameManager.add_session_money(c.value)
-				node.queue_free(); _coins.remove_at(i)
-		i -= 1
+  if coins.is_empty():
+    await get_tree().create_timer(0.3).timeout
+    return
 
-func _update_hud() -> void:
-	time_label.text = "%0.1f" % maxf(0.0, _remaining)
-	money_label.text = "$" + GameManager.format_number(GameManager.session_money)
-	var goomok_txt := ""
-	if not _goomok.is_empty():
-		goomok_txt = "  거목 %d%%" % int(100.0 * _goomok.hp / _goomok.maxhp)
-	info_label.text = "Lv.%d  씨앗 %d/%d%s" % [GameManager.session_level, _seeds, Balance.SEED_NEED[_world], goomok_txt]
+  coins.shuffle()
+  var total_duration = min(2.0, coins.size() * 0.05)
+  var pop_interval = total_duration / coins.size()
 
-# ── 레벨업 3택 ──
-func _on_level_up(_new_level: int) -> void:
-	if _state == ENDED:
-		return
-	_open_levelup()
+  for i in coins.size():
+    var coin = coins[i]
+    if not is_instance_valid(coin):
+      continue
 
-func _open_levelup() -> void:
-	_state = LEVELUP   # 게임플레이만 정지(_process 조기 반환), 트리는 안 멈춤(버튼 입력 유지)
-	for c in levelup_layer.get_children():
-		c.queue_free()
-	var dim := ColorRect.new()
-	dim.color = Color(0,0,0,0.6); dim.size = Vector2(1920,1080)
-	levelup_layer.add_child(dim)
-	var box := HBoxContainer.new()
-	box.set_anchors_preset(Control.PRESET_CENTER)
-	box.add_theme_constant_override("separation", 40)
-	levelup_layer.add_child(box)
-	var choices := _draft_choices()
-	for t in choices:
-		var d := PowerupData.by_type(t)
-		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(360, 240)
-		btn.text = "%s\n[%s]" % [d.name, d.rarity]
-		btn.add_theme_font_size_override("font_size", 32)
-		btn.pressed.connect(_pick_powerup.bind(t))
-		box.add_child(btn)
-	levelup_layer.visible = true
+    var tween = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+    tween.tween_interval(i * pop_interval)
+    tween.tween_property(coin, "scale", Vector2(1.8, 1.8), 0.08)
+    tween.tween_property(coin, "scale", Vector2(0, 0), 0.12)
+    tween.tween_callback(coin.queue_free)
 
-func _draft_choices() -> Array:
-	var pool := PowerupData.powerups().filter(func(t):
-		var d := PowerupData.by_type(t)
-		return _pu.get(t, 0) < d.max_stacks)
-	var picks := []
-	var n: int = 4 if _pu.has("extra_choice") else 3
-	var has_luck := _pu.has("luck")
-	for _i in range(mini(n, pool.size())):
-		var wsum := 0.0
-		for t in pool:
-			var w: float = PowerupData.by_type(t).weight
-			if has_luck and w <= 4: w *= 3.0
-			wsum += w
-		var r := _rng.randf() * wsum
-		var acc := 0.0
-		var chosen = pool[0]
-		for t in pool:
-			var w: float = PowerupData.by_type(t).weight
-			if has_luck and w <= 4: w *= 3.0
-			acc += w
-			if r <= acc:
-				chosen = t; break
-		picks.append(chosen)
-		pool.erase(chosen)
-	return picks
+  await get_tree().create_timer(total_duration + 0.3).timeout
 
-func _pick_powerup(t: String) -> void:
-	_pu[t] = _pu.get(t, 0) + 1
-	levelup_layer.visible = false
-	for c in levelup_layer.get_children():
-		c.queue_free()
-	_state = PLAYING
+func show_session_end_overlay(earnings: int) -> void:
+  # Play fanfare
+  if GameManager.sfx_enabled:
+    var sfx = AudioStreamPlayer.new()
+    sfx.stream = preload("res://resources/sounds/effect/end_session_fanfare.wav")
+    sfx.volume_db = -3.0
+    sfx.process_mode = Node.PROCESS_MODE_ALWAYS
+    add_child(sfx)
+    sfx.play()
+    sfx.finished.connect(sfx.queue_free)
 
-func _end_session(victory: bool) -> void:
-	if _state == ENDED:
-		return
-	_state = ENDED
-	SessionManager.end_session(true)
-	var head := "월드 클리어!" if victory else "세션 종료"
-	end_label.text = "%s\n$%s  (보석 %d)\n아무 키나 눌러 계속" % [head, GameManager.format_number(GameManager.money), GameManager.owned_gems]
-	end_label.visible = true
+  # Hide scene labels (replaced by dynamic container)
+  session_earnings_label.visible = false
+  bonus_label.visible = false
+  tap_to_return_label.visible = false
+  touch_button.disabled = true
+  # Hide the scene's SessionEndLabel too
+  var scene_end_label = session_end_overlay.get_node_or_null("SessionEndLabel")
+  if scene_end_label:
+    scene_end_label.visible = false
 
-func _unhandled_input(event: InputEvent) -> void:
-	if _state == ENDED:
-		if (event is InputEventKey or event is InputEventMouseButton) and event.is_pressed():
-			get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
-		return
-	if _state == PLAYING and event.is_action_pressed("ui_cancel"):
-		_open_exit_dialog()
+  # Main container: 세션종료 / 획득정보 / 터치하여돌아가기 를 하나의 VBox로 관리
+  var main_vbox = VBoxContainer.new()
+  main_vbox.name = "MainResultsVBox"
+  main_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+  main_vbox.set_anchors_preset(Control.PRESET_CENTER)
+  main_vbox.offset_left = -300
+  main_vbox.offset_right = 300
+  main_vbox.offset_top = -280
+  main_vbox.offset_bottom = 280
+  main_vbox.grow_horizontal = Control.GROW_DIRECTION_BOTH
+  main_vbox.grow_vertical = Control.GROW_DIRECTION_BOTH
+  main_vbox.add_theme_constant_override("separation", 0)
+  main_vbox.modulate = Color(1, 1, 1, 0)
 
-func _open_exit_dialog() -> void:
-	if has_node("ExitDialog"):
-		return
-	var layer := CanvasLayer.new()
-	layer.name = "ExitDialog"; layer.layer = 8
-	layer.process_mode = Node.PROCESS_MODE_ALWAYS
-	add_child(layer)
-	get_tree().paused = true
-	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.7); dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	layer.add_child(dim)
-	var box := VBoxContainer.new()
-	box.set_anchors_preset(Control.PRESET_CENTER)
-	box.add_theme_constant_override("separation", 16)
-	layer.add_child(box)
-	var b1 := Button.new(); b1.text = "처음으로"; b1.custom_minimum_size = Vector2(320, 80)
-	b1.pressed.connect(func(): get_tree().paused = false; SessionManager.quit_to_menu())
-	box.add_child(b1)
-	var b2 := Button.new(); b2.text = "게임 계속하기"; b2.custom_minimum_size = Vector2(320, 80)
-	b2.pressed.connect(func(): get_tree().paused = false; layer.queue_free())
-	box.add_child(b2)
-	var b3 := Button.new(); b3.text = "설정"; b3.custom_minimum_size = Vector2(320, 70)
-	b3.pressed.connect(func(): add_child(preload("res://scripts/settings_popup.gd").new()))
-	box.add_child(b3)
+  # ── Section 1: 세션 종료 ──
+  var end_label = Label.new()
+  end_label.text = "세션 종료"
+  end_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+  end_label.add_theme_font_size_override("font_size", 58)
+  end_label.add_theme_color_override("font_color", Color.WHITE)
+  end_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+  end_label.add_theme_constant_override("outline_size", 4)
+  main_vbox.add_child(end_label)
+
+  # Gap: 세션종료 ↔ 획득정보 (60px)
+  var gap1 = Control.new()
+  gap1.custom_minimum_size = Vector2(0, 60)
+  main_vbox.add_child(gap1)
+
+  # ── Section 2: 획득 정보 ──
+  # 순차 fade-in 대상 목록
+  var fade_rows: Array[Control] = []
+
+  # 모든 획득 정보를 하나의 VBox에 담아 너비 통일 + 화면 중앙 배치
+  var info_block = VBoxContainer.new()
+  info_block.add_theme_constant_override("separation", 10)
+  info_block.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+
+  # "{코인} {전체 코인}" (합계, 큰 글씨, 가운데 정렬)
+  var earnings_container = HBoxContainer.new()
+  earnings_container.add_theme_constant_override("separation", 4)
+  earnings_container.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+  earnings_container.modulate = Color(1, 1, 1, 0)
+  var prefix_label = Label.new()
+  prefix_label.text = "총 획득 코인: "
+  prefix_label.add_theme_font_size_override("font_size", 42)
+  prefix_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.5))
+  prefix_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+  prefix_label.add_theme_constant_override("outline_size", 4)
+  earnings_container.add_child(prefix_label)
+  var coin_hbox = GameManager.create_coin_label(
+    GameManager.format_number(earnings), 42, Color(0.3, 1.0, 0.5), 4)
+  earnings_container.add_child(coin_hbox)
+  info_block.add_child(earnings_container)
+  fade_rows.append(earnings_container)
+
+  # "+ 수집 n" (오른쪽 정렬)
+  var collect_amount = earnings - GameManager.session_boss_reward
+  var collect_label = Label.new()
+  collect_label.text = "+ 수집 %s" % GameManager.format_number(collect_amount)
+  collect_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+  collect_label.add_theme_font_size_override("font_size", 30)
+  collect_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
+  collect_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+  collect_label.add_theme_constant_override("outline_size", 3)
+  collect_label.modulate = Color(1, 1, 1, 0)
+  info_block.add_child(collect_label)
+  fade_rows.append(collect_label)
+
+  # "+ 보너스 n" (오른쪽 정렬)
+  var boss_label = Label.new()
+  boss_label.text = "+ 보너스 %s" % GameManager.format_number(GameManager.session_boss_reward)
+  boss_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+  boss_label.add_theme_font_size_override("font_size", 30)
+  boss_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
+  boss_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+  boss_label.add_theme_constant_override("outline_size", 3)
+  boss_label.modulate = Color(1, 1, 1, 0)
+  info_block.add_child(boss_label)
+  fade_rows.append(boss_label)
+
+  # {보석}x{개수} (가운데 정렬)
+  if GameManager.session_gems > 0:
+    var gem_container = HBoxContainer.new()
+    gem_container.add_theme_constant_override("separation", 6)
+    gem_container.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+    gem_container.modulate = Color(1, 1, 1, 0)
+
+    gem_container.add_child(_create_gem_icon(42))
+
+    var gem_count = Label.new()
+    gem_count.text = "x%d" % GameManager.session_gems
+    gem_count.add_theme_font_size_override("font_size", 42)
+    gem_count.add_theme_color_override("font_color", Color(0.95, 0.3, 0.5))
+    gem_count.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+    gem_count.add_theme_constant_override("outline_size", 4)
+    gem_container.add_child(gem_count)
+
+    info_block.add_child(gem_container)
+    fade_rows.append(gem_container)
+
+  # {열쇠}({월드}) (가운데 정렬)
+  var key_world = GameManager.session_key_acquired
+  if key_world >= 0:
+    var world_names = ["슬라임 늪", "들판", "기사의 성벽", "마법의 숲", "수정 호수", "고대 유적", "용의 봉우리"]
+    var world_name = world_names[key_world] if key_world < world_names.size() else "월드 %d" % key_world
+    var key_row = HBoxContainer.new()
+    key_row.add_theme_constant_override("separation", 10)
+    key_row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+    key_row.modulate = Color(1, 1, 1, 0)
+
+    var key_icon = _create_key_icon(42)
+    key_row.add_child(key_icon)
+
+    var key_label = Label.new()
+    key_label.text = "(%s)" % world_name
+    key_label.add_theme_font_size_override("font_size", 42)
+    key_label.add_theme_color_override("font_color", Color(0.3, 1.0, 1.0))
+    key_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+    key_label.add_theme_constant_override("outline_size", 4)
+    key_row.add_child(key_label)
+
+    info_block.add_child(key_row)
+    fade_rows.append(key_row)
+
+  # {왕관} 황금 왕관 (가운데 정렬)
+  if GameManager.session_crown_acquired:
+    var crown_row = HBoxContainer.new()
+    crown_row.add_theme_constant_override("separation", 10)
+    crown_row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+    crown_row.modulate = Color(1, 1, 1, 0)
+
+    var crown_icon = TextureRect.new()
+    crown_icon.texture = preload("res://resources/images/icon/crown.png")
+    crown_icon.custom_minimum_size = Vector2(42, 42)
+    crown_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+    crown_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+    crown_row.add_child(crown_icon)
+
+    var crown_label = Label.new()
+    crown_label.text = "황금 왕관"
+    crown_label.add_theme_font_size_override("font_size", 42)
+    crown_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+    crown_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+    crown_label.add_theme_constant_override("outline_size", 4)
+    crown_row.add_child(crown_label)
+
+    info_block.add_child(crown_row)
+    fade_rows.append(crown_row)
+
+  main_vbox.add_child(info_block)
+
+  # Gap: 획득정보 ↔ 터치하여돌아가기 (110px)
+  var gap2 = Control.new()
+  gap2.custom_minimum_size = Vector2(0, 110)
+  main_vbox.add_child(gap2)
+
+  # ── Section 3: 터치하여 돌아가기 ──
+  var tap_label = Label.new()
+  tap_label.name = "TapLabel"
+  tap_label.text = "터치하여 돌아가기"
+  tap_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+  tap_label.add_theme_font_size_override("font_size", 36)
+  tap_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+  tap_label.modulate = Color(1, 1, 1, 0)
+  main_vbox.add_child(tap_label)
+
+  session_end_overlay.add_child(main_vbox)
+
+  # Show overlay
+  session_end_overlay.visible = true
+
+  # "세션 종료" 먼저 표시
+  var tween = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+  tween.tween_property(main_vbox, "modulate:a", 1.0, 0.3)
+  tween.tween_interval(0.3)
+
+  # 획득 정보 한 줄씩 순차 fade-in
+  for row in fade_rows:
+    tween.tween_property(row, "modulate:a", 1.0, 0.3)
+    tween.tween_interval(0.15)
+
+  # 터치하여 돌아가기
+  tween.tween_interval(0.3)
+  tween.tween_property(tap_label, "modulate:a", 1.0, 0.3)
+  tween.tween_callback(func():
+    touch_button.disabled = false
+    _animate_tap_label(tap_label)
+  )
+
+func _create_gem_icon(icon_size: int) -> Control:
+  return GameManager._create_gem_display_icon(icon_size)
+
+func _create_key_icon(icon_size: int) -> Control:
+  var container = Control.new()
+  container.custom_minimum_size = Vector2(icon_size, icon_size)
+  var s = icon_size / 28.0  # scale factor (original design is ~28px)
+  var cx = icon_size * 0.5
+  var cy = icon_size * 0.5
+  # Head (rectangle)
+  var head = Polygon2D.new()
+  head.color = Color(0.3, 1.0, 1.0)
+  head.polygon = PackedVector2Array([
+    Vector2(cx - 8 * s, cy - 14 * s), Vector2(cx + 8 * s, cy - 14 * s),
+    Vector2(cx + 8 * s, cy - 2 * s), Vector2(cx - 8 * s, cy - 2 * s)
+  ])
+  container.add_child(head)
+  # Shaft
+  var shaft = Polygon2D.new()
+  shaft.color = Color(0.2, 0.8, 0.8)
+  shaft.polygon = PackedVector2Array([
+    Vector2(cx - 3 * s, cy - 2 * s), Vector2(cx + 3 * s, cy - 2 * s),
+    Vector2(cx + 3 * s, cy + 14 * s), Vector2(cx - 3 * s, cy + 14 * s)
+  ])
+  container.add_child(shaft)
+  # Tooth
+  var tooth = Polygon2D.new()
+  tooth.color = Color(0.2, 0.8, 0.8)
+  tooth.polygon = PackedVector2Array([
+    Vector2(cx + 3 * s, cy + 8 * s), Vector2(cx + 8 * s, cy + 8 * s),
+    Vector2(cx + 8 * s, cy + 12 * s), Vector2(cx + 3 * s, cy + 12 * s)
+  ])
+  container.add_child(tooth)
+  return container
+
+func _animate_tap_label(label: Label) -> void:
+  var tween = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+  tween.set_loops()
+  tween.tween_property(label, "modulate:a", 0.3, 0.7)
+  tween.tween_property(label, "modulate:a", 1.0, 0.7)
+
+func _on_session_end_touch() -> void:
+  GameManager.play_confirm_click()
+  get_tree().paused = false
+  # Normal session end - finalize and save
+  GameManager.finalize_session()
+  SaveManager.save_game()
+  SessionManager.quit_to_menu()
+
+func _notification(what: int) -> void:
+  if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+    # Android back button
+    if session_ended:
+      _on_session_end_touch()
+    elif confirm_dialog.visible:
+      _on_cancel_back_to_menu()
+    else:
+      _on_back_to_menu_pressed()
+
+func _on_session_ready() -> void:
+  session_ready = true
+
+func _on_back_to_menu_pressed() -> void:
+  GameManager.play_button_click()
+  confirm_dialog.show_dialog("첫 화면으로 돌아갈까요?", "처음으로", "게임 계속하기", true)
+  get_tree().paused = true
+
+func _on_confirm_back_to_menu() -> void:
+  get_tree().paused = false
+  var p = get_tree().get_first_node_in_group("player")
+  if p and p.has_method("_remove_hit_overlay"):
+    p._remove_hit_overlay()
+  SessionManager.quit_to_menu()
+
+func _on_cancel_back_to_menu() -> void:
+  get_tree().paused = false
+
+func _on_boss_key_collected(_world_index: int) -> void:
+  if session_ended:
+    return
+  _boss_end_session()
+
+func _boss_end_session() -> void:
+  session_ended = true
+  get_tree().paused = true
+  back_to_menu_btn.visible = false
+
+  var player = get_tree().get_first_node_in_group("player")
+  if player and player.has_method("_remove_hit_overlay"):
+    player._remove_hit_overlay()
+
+  # 1초 정지 연출 (보스 처치 여운)
+  await get_tree().create_timer(1.0).timeout
+
+  if bgm_player:
+    var bgm_tween = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+    bgm_tween.tween_property(bgm_player, "volume_db", -40.0, 1.5)
+    bgm_tween.tween_callback(bgm_player.stop)
+
+  var earnings = GameManager.session_money
+  await animate_coins_disappear()
+  show_session_end_overlay(earnings)
+
+func _on_extra_time(seconds: float) -> void:
+  session_time_remaining += seconds
+  session_total_time += seconds

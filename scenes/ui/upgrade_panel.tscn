@@ -1,0 +1,184 @@
+[gd_scene load_steps=4 format=3 uid="uid://cupgrade123"]
+
+[ext_resource type="Script" path="res://scripts/upgrade_panel.gd" id="1_upgrade"]
+[ext_resource type="PackedScene" uid="uid://cku35fegcf51v" path="res://scenes/ui/money_display.tscn" id="3_money"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.1, 0.1, 0.15, 1)
+
+[node name="UpgradePanel" type="CanvasLayer"]
+
+[node name="Control" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_upgrade")
+
+[node name="Panel" type="Panel" parent="Control"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="PaddedArea" type="Control" parent="Control/Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 40.0
+offset_top = 60.0
+offset_right = -40.0
+offset_bottom = -60.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="MoneyDisplay" parent="Control/Panel/PaddedArea" instance=ExtResource("3_money")]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -260.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 50.0
+grow_horizontal = 0
+
+[node name="CloseBtn" type="Button" parent="Control/Panel/PaddedArea"]
+layout_mode = 1
+offset_left = 0.0
+offset_top = 10.0
+offset_right = 137.0
+offset_bottom = 70.0
+
+[node name="TitleLabel" type="Label" parent="Control/Panel/PaddedArea"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 60.0
+offset_bottom = 120.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(1, 0.9, 0.3, 1)
+theme_override_font_sizes/font_size = 42
+text = "강화"
+horizontal_alignment = 1
+
+[node name="WeaponSection" type="PanelContainer" parent="Control/Panel/PaddedArea"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 125.0
+offset_bottom = 385.0
+grow_horizontal = 2
+
+[node name="WeaponHBox" type="HBoxContainer" parent="Control/Panel/PaddedArea/WeaponSection"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="WeaponImage" type="TextureRect" parent="Control/Panel/PaddedArea/WeaponSection/WeaponHBox"]
+custom_minimum_size = Vector2(150, 150)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="WeaponInfo" type="VBoxContainer" parent="Control/Panel/PaddedArea/WeaponSection/WeaponHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="CurrentWeaponLabel" type="Label" parent="Control/Panel/PaddedArea/WeaponSection/WeaponHBox/WeaponInfo"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.7, 0.8, 1)
+theme_override_font_sizes/font_size = 22
+text = "현재 무기"
+
+[node name="WeaponNameLabel" type="Label" parent="Control/Panel/PaddedArea/WeaponSection/WeaponHBox/WeaponInfo"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 32
+text = "나뭇가지"
+
+[node name="WeaponStatsLabel" type="Label" parent="Control/Panel/PaddedArea/WeaponSection/WeaponHBox/WeaponInfo"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.8, 1, 1)
+theme_override_font_sizes/font_size = 24
+text = "대미지: 1"
+
+[node name="WeaponUpgradeBtn" type="Button" parent="Control/Panel/PaddedArea/WeaponSection/WeaponHBox/WeaponInfo"]
+custom_minimum_size = Vector2(0, 70)
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "업그레이드 $100"
+
+[node name="SectionLabel" type="Label" parent="Control/Panel/PaddedArea"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 455.0
+offset_bottom = 495.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.6, 0.7, 0.8, 1)
+theme_override_font_sizes/font_size = 24
+text = "── 스킬 ──"
+horizontal_alignment = 1
+
+[node name="SkillTreeScroll" type="ScrollContainer" parent="Control/Panel/PaddedArea"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 505.0
+offset_bottom = 1220.0
+grow_horizontal = 2
+horizontal_scroll_mode = 0
+
+[node name="SkillTreeContainer" type="Control" parent="Control/Panel/PaddedArea/SkillTreeScroll"]
+custom_minimum_size = Vector2(0, 700)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+
+[node name="DescriptionPanel" type="Panel" parent="Control/Panel/PaddedArea"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 1240.0
+offset_bottom = 1520.0
+grow_horizontal = 2
+
+[node name="DescriptionLabel" type="Label" parent="Control/Panel/PaddedArea/DescriptionPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 15.0
+offset_right = -20.0
+offset_bottom = -15.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 26
+text = "노드를 선택하세요"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="ConfirmBtn" type="Button" parent="Control/Panel/PaddedArea"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -120.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_font_sizes/font_size = 34
+disabled = true
+text = "강화하기"

@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3 uid="uid://bxpqvj8kcvyns"]
+
+[ext_resource type="Script" path="res://scripts/player.gd" id="1_player"]
+
+[node name="Player" type="Node2D" groups=["player"]]
+script = ExtResource("1_player")
+
+[node name="AttackTimer" type="Timer" parent="."]
+wait_time = 0.2
+one_shot = true
