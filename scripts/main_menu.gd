@@ -358,11 +358,11 @@ func _create_world_card(index: int) -> PanelContainer:
   style.content_margin_bottom = 18
   card.add_theme_stylebox_override("panel", style)
 
-  var has_key = GameManager.has_key(index)
-  var fully_locked = not unlocked and not has_key
+  # v2: 거목 클리어로 다음 월드 자동 해금 → 열쇠 개념 제거. 잠김 = 미해금.
+  var fully_locked = not unlocked
 
   if fully_locked:
-    # Locked without key: show only lock icon centered
+    # 잠김: 자물쇠 아이콘만(이전 월드 거목 처치 시 해금)
     var lock_container = CenterContainer.new()
     lock_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     lock_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -783,31 +783,19 @@ func _ws_update_action_btn() -> void:
     _ws_action_btn.text = "게임 입장"
     _ws_action_btn.disabled = false
   else:
-    var cost = GameManager.WORLD_UNLOCK_COSTS[_ws_selected]
-    var has_key = GameManager.has_key(_ws_selected)
-    if has_key:
-      _ws_action_btn.text = "해금"
-      _ws_action_btn.disabled = GameManager.money < cost
-    else:
-      _ws_action_btn.text = "열쇠 필요"
-      _ws_action_btn.disabled = true
+    # v2: 잠긴 월드는 이전 월드 거목 처치로만 해금(수동 해금 없음)
+    _ws_action_btn.text = "이전 거목 처치 필요"
+    _ws_action_btn.disabled = true
 
 func _on_action_btn_pressed() -> void:
   GameManager.play_confirm_click()
   if _ws_selected < 0:
     return
-  var unlocked = _ws_selected in GameManager.unlocked_worlds
-  if unlocked:
+  if _ws_selected in GameManager.unlocked_worlds:
     GameManager.selected_world = _ws_selected
     SaveManager.save_game()
     _close_world_select()
     _start_game()
-  else:
-    if GameManager.unlock_world(_ws_selected):
-      GameManager.play_unlock_sound()
-      update_money_display()
-      _ws_rebuild_cards()
-      _ws_update_action_btn()
 
 func _close_world_select() -> void:
   GameManager.play_button_click()
