@@ -328,7 +328,19 @@ func show_session_end_overlay(earnings: int) -> void:
     info_block.add_child(gem_container)
     fade_rows.append(gem_container)
 
-  # {열쇠}({월드}) (가운데 정렬)
+  # 게임 레벨 (계정 메타)
+  var glevel_label = Label.new()
+  glevel_label.text = "게임 레벨 Lv.%d" % GameManager.get_game_level()
+  glevel_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+  glevel_label.add_theme_font_size_override("font_size", 34)
+  glevel_label.add_theme_color_override("font_color", Color(0.7, 0.85, 1.0))
+  glevel_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+  glevel_label.add_theme_constant_override("outline_size", 4)
+  glevel_label.modulate = Color(1, 1, 1, 0)
+  info_block.add_child(glevel_label)
+  fade_rows.append(glevel_label)
+
+  # {증표}({월드}) — 거목 클리어 표식 (가운데 정렬)
   var key_world = GameManager.session_key_acquired
   if key_world >= 0:
     var world_names = ["슬라임 늪", "들판", "기사의 성벽", "마법의 숲", "수정 호수", "고대 유적", "용의 봉우리"]
