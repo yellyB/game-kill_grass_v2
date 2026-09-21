@@ -3,6 +3,7 @@ extends Node
 # core/ SSOT (밸런스 곡선 — 순수 정적 함수)
 const Progression = preload("res://core/progression.gd")
 const Balance = preload("res://core/balance_data.gd")
+const Economy = preload("res://core/economy.gd")
 
 # UI constants
 const SCREEN_PADDING_H: float = 40.0
@@ -594,6 +595,71 @@ func add_fury(amount: float) -> void:
 func add_money(amount: int) -> void:
   session_money = max(0, session_money + amount)
   session_money_changed.emit(session_money)
+
+# ── 씨앗 · 거목 · 월드 클리어 시스템 (구 분노 보스/열쇠 대체) ──
+# 정예 식물 처치 → 씨앗 드롭 → N개 모으면 거목 소환 → 거목 처치 = 월드 클리어.
+var session_seeds: int = 0
+var goomok_ready_state: bool = false     # 씨앗 N개 도달(거목 소환 대기/진행)
+var goomok_cleared_state: bool = false   # 이번 세션 거목 처치 완료
+
+signal seed_changed(count: int, need: int)
+signal goomok_ready()                     # 씨앗 충족 → 거목 소환 요청
+signal goomok_cleared()                   # 거목 처치 → 세션 종료 트리거
+
+# 씨앗 필요 개수 (월드별, core/balance_data 소유)
+func get_seed_need() -> int:
+  var w = clampi(selected_world, 0, Balance.SEED_NEED.size() - 1)
+  return int(Balance.SEED_NEED[w])
+
+# 거목 HP (월드/초월 배율, core/economy 소유)
+func get_goomok_hp() -> float:
+  return Economy.goomok_hp_at(selected_world, get_world_strength_level(selected_world))
+
+# 현재 시점 대표 풀 평균 체력(등급 스킬 기준 근사) → 정예 HP 산출용
+func get_current_avg_grass_hp() -> float:
+  var level = upgrade_levels.get("grass_quality", 0)
+  var base_type = mini(level / 2, 4)
+  var hp := 4.0
+  if base_type < grass_data_list.size():
+    hp = float(grass_data_list[base_type].max_health)
+  return hp * get_world_grass_hp_mult()
+
+# 정예 식물 HP = 풀 평균 ×2 (월드/초월 자동 반영)
+func get_elite_hp() -> float:
+  return Balance.ELITE_HP_MULT * get_current_avg_grass_hp()
+
+func add_seed(count: int = 1) -> void:
+  if goomok_ready_state:
+    return
+  session_seeds += count
+  var need = get_seed_need()
+  seed_changed.emit(session_seeds, need)
+  if session_seeds >= need:
+    goomok_ready_state = true
+    goomok_ready.emit()
+
+# 거목 처치 시 호출: 월드 클리어 처리(다음 월드 해금 + 최초 클리어 보석 + 코인 보너스)
+func clear_current_world() -> void:
+  if goomok_cleared_state:
+    return
+  goomok_cleared_state = true
+  var w = selected_world
+  var strength = get_world_strength_level(w)
+  # 최초(해당 초월 레벨) 클리어 보석: 1 + 초월 레벨
+  if not has_collected_gems(w, strength):
+    add_gem(1 + strength)
+    mark_gems_collected(w, strength)
+  # 다음 월드 해금 (거목 클리어 = 열쇠 대체)
+  var nxt = w + 1
+  if nxt < WORLD_UNLOCK_COSTS.size() and nxt not in unlocked_worlds:
+    unlocked_worlds.append(nxt)
+  # 클리어 표식(증표) — 세션 결과 화면 표시용
+  session_key_acquired = w
+  # 모디스트 코인 보너스
+  session_boss_reward = int(get_goomok_hp() * 0.3)
+  add_money(session_boss_reward)
+  SaveManager.save_game()
+  goomok_cleared.emit()
 
 # ── Skill total progress helper ──
 # Combines level and sub_level into a single progress value
@@ -1401,6 +1467,9 @@ func reset_session_data() -> void:
   hit_penalty_active = false
   session_level = 1
   session_xp = 0.0
+  session_seeds = 0
+  goomok_ready_state = false
+  goomok_cleared_state = false
   session_key_acquired = -1
   session_crown_acquired = false
   session_boss_reward = 0

@@ -62,6 +62,9 @@ func _ready() -> void:
   # Boss key → session end
   GameManager.boss_key_collected.connect(_on_boss_key_collected)
 
+  # 거목 처치 → 월드 클리어 → 세션 종료
+  GameManager.goomok_cleared.connect(_on_goomok_cleared)
+
   # Style progress bar
   var bg_style = StyleBoxFlat.new()
   bg_style.bg_color = Color(0.2, 0.2, 0.2, 0.5)
@@ -482,6 +485,11 @@ func _on_cancel_back_to_menu() -> void:
   get_tree().paused = false
 
 func _on_boss_key_collected(_world_index: int) -> void:
+  if session_ended:
+    return
+  _boss_end_session()
+
+func _on_goomok_cleared() -> void:
   if session_ended:
     return
   _boss_end_session()

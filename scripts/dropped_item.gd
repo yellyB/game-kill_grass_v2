@@ -41,9 +41,17 @@ func setup_gem(p_target: Node2D, p_world: int = -1, p_strength: int = 0) -> void
 	gem_world = p_world
 	gem_strength = p_strength
 
+var is_seed: bool = false
+
+func setup_seed(p_target: Node2D) -> void:
+	is_seed = true
+	target = p_target
+
 func _ready() -> void:
 	if is_key:
 		_build_key_visual()
+	elif is_seed:
+		_build_seed_visual()
 	elif is_gem:
 		_build_gem_visual()
 	elif use_potion_visual:
@@ -170,6 +178,27 @@ func _build_gem_visual() -> void:
 	])
 	add_child(highlight)
 
+func _build_seed_visual() -> void:
+	# 씨앗: 물방울형 갈색 씨앗 + 초록 새싹
+	if sprite:
+		sprite.visible = false
+	var seed_body = Polygon2D.new()
+	seed_body.color = Color(0.55, 0.38, 0.18)
+	var pts: PackedVector2Array = []
+	for i in 12:
+		var a = TAU / 12.0 * i
+		pts.append(Vector2(cos(a) * 8.0, sin(a) * 11.0 + 2.0))
+	seed_body.polygon = pts
+	add_child(seed_body)
+	# 새싹 (위쪽 초록 잎)
+	var sprout = Polygon2D.new()
+	sprout.color = Color(0.35, 0.8, 0.35)
+	sprout.polygon = PackedVector2Array([
+		Vector2(0, -9), Vector2(6, -16), Vector2(2, -18), Vector2(0, -13),
+		Vector2(-2, -18), Vector2(-6, -16)
+	])
+	add_child(sprout)
+
 func _build_key_visual() -> void:
 	# Hide the default sprite
 	if sprite:
@@ -207,6 +236,8 @@ func _collect() -> void:
 
 	if is_key:
 		GameManager.add_key(key_world_index)
+	elif is_seed:
+		GameManager.add_seed()
 	elif is_gem:
 		GameManager.add_gem()
 		if gem_world >= 0:
