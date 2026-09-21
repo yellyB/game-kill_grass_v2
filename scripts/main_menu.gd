@@ -14,6 +14,7 @@ var world_overlay: Control = null
 var _ws_selected: int = -1  # Currently highlighted world index in panel
 var _ws_cards_container: VBoxContainer = null
 var _ws_action_btn: Button = null
+var _ws_rune_container: GridContainer = null
 var _debug_container: HBoxContainer = null
 var _settings_btn: Button = null
 var _settings_overlay: Control = null
@@ -278,9 +279,12 @@ func _open_world_select() -> void:
 
   _ws_rebuild_cards()
 
+  # 룬 선택 바 (게임 레벨 8부터 개방)
+  _build_rune_bar(vbox)
+
   # Spacer between cards and buttons
   var spacer = Control.new()
-  spacer.custom_minimum_size = Vector2(0, 40)
+  spacer.custom_minimum_size = Vector2(0, 30)
   vbox.add_child(spacer)
 
   # Action button (게임 입장 / 해금)
@@ -308,6 +312,44 @@ func _open_world_select() -> void:
   close_btn.pressed.connect(_close_world_select)
   GameManager.style_button(close_btn, "muted")
   close_center.add_child(close_btn)
+
+func _build_rune_bar(parent: VBoxContainer) -> void:
+  if GameManager.get_game_level() < 8:
+    return
+  var title = Label.new()
+  title.text = "룬 (세션당 1개)"
+  title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+  title.add_theme_font_size_override("font_size", 30)
+  title.add_theme_color_override("font_color", Color(0.7, 0.85, 0.6))
+  parent.add_child(title)
+  _ws_rune_container = GridContainer.new()
+  _ws_rune_container.columns = 3
+  _ws_rune_container.add_theme_constant_override("h_separation", 10)
+  _ws_rune_container.add_theme_constant_override("v_separation", 10)
+  parent.add_child(_ws_rune_container)
+  _refresh_rune_bar()
+
+func _refresh_rune_bar() -> void:
+  if _ws_rune_container == null:
+    return
+  for c in _ws_rune_container.get_children():
+    c.queue_free()
+  for r in GameManager.RUNE_DEFS:
+    var b = Button.new()
+    b.custom_minimum_size = Vector2(226, 60)
+    b.add_theme_font_size_override("font_size", 26)
+    var unlocked = GameManager.is_rune_unlocked(r.type)
+    var active = GameManager.active_rune == r.type
+    b.text = r.name  # 잠김은 비활성 스타일로 표현
+    b.disabled = not unlocked
+    GameManager.style_button(b, "main" if active else "muted")
+    if unlocked:
+      b.pressed.connect(func():
+        GameManager.play_button_click()
+        GameManager.set_active_rune("" if GameManager.active_rune == r.type else r.type)
+        _refresh_rune_bar()
+      )
+    _ws_rune_container.add_child(b)
 
 func _ws_rebuild_cards() -> void:
   for child in _ws_cards_container.get_children():
@@ -804,6 +846,7 @@ func _close_world_select() -> void:
     world_overlay = null
   _ws_cards_container = null
   _ws_action_btn = null
+  _ws_rune_container = null
   _on_panel_closed()
 
 # ── Settings Popup ──
