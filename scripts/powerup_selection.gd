@@ -42,7 +42,7 @@ const POWERUP_DATA = [
   {"type": "level_burst", "name": "레벨업 충격", "desc": "레벨업 시 주변 풀 즉시 처치", "color": Color(0.7, 0.9, 1.0), "image": "", "stackable": false, "item": false, "weight": 10, "enabled": true},
   {"type": "seed_blessing", "name": "씨앗 축복", "desc": "씨앗 획득 시 8초간 전 스탯 +15%", "color": Color(0.5, 0.9, 0.5), "image": "", "stackable": false, "item": false, "weight": 10, "enabled": true},
   {"type": "xp_gain", "name": "떡잎 부적", "desc": "레벨업 게이지 획득량 +20%", "color": Color(0.6, 0.9, 0.6), "image": "", "stackable": true, "item": false, "weight": 20, "enabled": true},
-  {"type": "reroll", "name": "리롤 토큰", "desc": "파워업 3택 다시 뽑기 +1", "color": Color(0.5, 0.7, 1.0), "image": "", "stackable": true, "item": false, "weight": 10, "enabled": false},
+  {"type": "reroll", "name": "리롤 토큰", "desc": "파워업 3택 다시 뽑기 +1", "color": Color(0.5, 0.7, 1.0), "image": "", "stackable": true, "item": false, "weight": 10, "enabled": true},
   {"type": "extra_choice", "name": "안목", "desc": "파워업 선택지 3→4개", "color": Color(0.6, 0.8, 1.0), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": true},
   {"type": "luck", "name": "행운의 편자", "desc": "레어 이상 등장 확률 증가", "color": Color(0.9, 0.9, 0.4), "image": "", "stackable": true, "item": false, "weight": 4, "enabled": true},
   {"type": "snowball", "name": "눈덩이", "desc": "풀 100개마다 공격력 +2% (세션 내)", "color": Color(0.8, 0.9, 1.0), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": true},
@@ -132,6 +132,9 @@ func _weighted(item: Dictionary, luck: int) -> float:
   return w
 
 func _build_ui() -> void:
+  # 리롤 재구성 시 기존 UI 제거
+  for c in get_children():
+    c.queue_free()
   # 안목: 선택지 3→4개
   var count = 4 if GameManager.pu("extra_choice") > 0 else 3
   var selected = _pick_random_powerups(count)
@@ -284,6 +287,20 @@ func _build_ui() -> void:
     btn.add_child(hbox)
     btn.pressed.connect(_on_selected.bind(data.type))
     center.add_child(btn)
+
+  # 리롤 토큰 보유 시: 다시 뽑기 버튼
+  if GameManager.pu("reroll") > 0:
+    var reroll_btn = Button.new()
+    reroll_btn.text = "다시 뽑기 (%d)" % GameManager.pu("reroll")
+    reroll_btn.custom_minimum_size = Vector2(360, 90)
+    reroll_btn.add_theme_font_size_override("font_size", 34)
+    GameManager.style_button(reroll_btn, "sub")
+    reroll_btn.pressed.connect(func():
+      GameManager.play_button_click()
+      GameManager.session_pu["reroll"] = GameManager.pu("reroll") - 1
+      _build_ui()
+    )
+    center.add_child(reroll_btn)
 
   # Fade in
   root.modulate = Color(1, 1, 1, 0)
