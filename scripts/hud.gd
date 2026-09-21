@@ -54,6 +54,9 @@ func _ready() -> void:
   # 아이템 슬롯 표시
   _setup_item_slots()
 
+  # 열매(아이템 재화) 카운터
+  _setup_token_indicator()
+
 func _process(delta: float) -> void:
   # Update timed buff countdowns
   _update_buff_timers()
@@ -196,6 +199,47 @@ func _setup_seed_indicator() -> void:
   _update_seed_label(GameManager.session_seeds, GameManager.get_seed_need())
   GameManager.seed_changed.connect(_update_seed_label)
   GameManager.goomok_ready.connect(_on_goomok_ready_hud)
+
+var token_label: Label = null
+
+func _setup_token_indicator() -> void:
+  var c = HBoxContainer.new()
+  c.add_theme_constant_override("separation", 8)
+  c.position = Vector2(180, 108)
+  c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+  c.add_child(_make_token_icon())
+  token_label = Label.new()
+  token_label.add_theme_font_size_override("font_size", 28)
+  token_label.add_theme_color_override("font_color", Color(1.0, 0.6, 0.4))
+  token_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+  token_label.add_theme_constant_override("outline_size", 3)
+  token_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+  c.add_child(token_label)
+  padded_area.add_child(c)
+  _update_token_label(GameManager.owned_tokens)
+  GameManager.token_changed.connect(_update_token_label)
+
+func _make_token_icon() -> Control:
+  var c = Control.new()
+  c.custom_minimum_size = Vector2(26, 26)
+  c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+  var berry = Polygon2D.new()
+  berry.color = Color(0.9, 0.35, 0.2)
+  var pts: PackedVector2Array = []
+  for i in 12:
+    var a = TAU / 12.0 * i
+    pts.append(Vector2(13 + cos(a) * 8.0, 15 + sin(a) * 9.0))
+  berry.polygon = pts
+  c.add_child(berry)
+  var leaf = Polygon2D.new()
+  leaf.color = Color(0.35, 0.7, 0.3)
+  leaf.polygon = PackedVector2Array([Vector2(13, 5), Vector2(19, 0), Vector2(15, 5)])
+  c.add_child(leaf)
+  return c
+
+func _update_token_label(amount: int) -> void:
+  if token_label:
+    token_label.text = str(amount)
 
 func _make_seed_icon() -> Control:
   var c = Control.new()
