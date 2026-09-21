@@ -11,12 +11,12 @@ const POWERUP_DATA = [
   {"type": "pu_attack_speed", "name": "어택 부스트", "desc": "공격 속도 +12%", "color": Color(1.0, 0.5, 0.2), "image": "어택부스트.png", "stackable": true, "item": false, "weight": 20, "enabled": true},
   {"type": "pu_attack_range", "name": "와이드 스윙", "desc": "공격 범위 +15%", "color": Color(0.3, 0.6, 1.0), "image": "와이드어택.png", "stackable": true, "item": false, "weight": 20, "enabled": true},
   {"type": "timber", "name": "벌목", "desc": "거목·정예 피해 +30%", "color": Color(0.6, 0.4, 0.2), "image": "", "stackable": true, "item": false, "weight": 10, "enabled": true},
-  {"type": "chain_reaction", "name": "연쇄 반응", "desc": "풀 처치 시 30% 확률로 인접 풀 즉시 처치", "color": Color(0.9, 0.6, 0.2), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": false},
+  {"type": "chain_reaction", "name": "연쇄 반응", "desc": "풀 처치 시 30% 확률로 인접 풀 즉시 처치", "color": Color(0.9, 0.6, 0.2), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": true},
   # ── 치명타 (파워업) ──
   {"type": "pu_crit_chance", "name": "치명 감각", "desc": "치명타 확률 +8%", "color": Color(1.0, 0.2, 0.4), "image": "", "stackable": true, "item": false, "weight": 10, "enabled": true},
   {"type": "pu_crit_damage", "name": "치명 강타", "desc": "치명타 피해 +40%", "color": Color(1.0, 0.2, 0.4), "image": "", "stackable": true, "item": false, "weight": 10, "enabled": true},
   {"type": "critical_reaper", "name": "크리티컬 리퍼", "desc": "치명타 시 범위 내 풀 30% 즉사", "color": Color(0.6, 0.1, 0.3), "image": "크리티컬리퍼.png", "stackable": false, "item": false, "weight": 10, "enabled": true},
-  {"type": "execute", "name": "참수", "desc": "체력 20% 이하 풀 즉시 처치", "color": Color(0.7, 0.1, 0.2), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": false},
+  {"type": "execute", "name": "참수", "desc": "체력 20% 이하 풀 즉시 처치", "color": Color(0.7, 0.1, 0.2), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": true},
   # ── 수확·경제 (파워업) ──
   {"type": "coin_value", "name": "황금 손길", "desc": "코인 가치 +12%", "color": Color(1.0, 0.85, 0.2), "image": "", "stackable": true, "item": false, "weight": 20, "enabled": true},
   {"type": "pu_magnet_range", "name": "메가 마그넷", "desc": "수집 범위 +25%", "color": Color(0.2, 1.0, 0.8), "image": "메가마그넷.png", "stackable": true, "item": false, "weight": 20, "enabled": true},
@@ -24,22 +24,22 @@ const POWERUP_DATA = [
   {"type": "coin_leech", "name": "흡혈 수확", "desc": "벤 풀 코인 +8%", "color": Color(0.8, 0.7, 0.2), "image": "", "stackable": true, "item": false, "weight": 20, "enabled": true},
   {"type": "combo_harvest", "name": "콤보 수확", "desc": "연속 처치 10마다 코인 +5% (최대 +50%)", "color": Color(1.0, 0.7, 0.3), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": true},
   {"type": "interest", "name": "이자", "desc": "세션 종료 시 보유 코인 +8%", "color": Color(0.9, 0.8, 0.3), "image": "", "stackable": true, "item": false, "weight": 10, "enabled": true},
-  {"type": "overkill", "name": "오버킬 환원", "desc": "처치 초과 데미지만큼 코인 보너스", "color": Color(0.9, 0.5, 0.2), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": false},
+  {"type": "overkill", "name": "오버킬 환원", "desc": "처치 초과 데미지만큼 코인 보너스", "color": Color(0.9, 0.5, 0.2), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": true},
   # ── 황금풀 (파워업) ──
   {"type": "pu_golden_chance", "name": "황금 씨앗", "desc": "황금풀 등장 확률 +2%", "color": Color(1.0, 0.9, 0.2), "image": "", "stackable": true, "item": false, "weight": 10, "enabled": true},
   {"type": "golden_luck", "name": "골든 럭", "desc": "황금풀 제거 시 30% 확률 커먼 파워업 획득", "color": Color(1.0, 0.85, 0.0), "image": "골든럭.png", "stackable": false, "item": false, "weight": 10, "enabled": true},
-  {"type": "midas", "name": "미다스", "desc": "벤 풀이 낮은 확률로 즉석 황금 보상", "color": Color(1.0, 0.8, 0.1), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": false},
+  {"type": "midas", "name": "미다스", "desc": "벤 풀이 낮은 확률로 즉석 황금 보상", "color": Color(1.0, 0.8, 0.1), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": true},
   # ── 기동 (파워업) ──
   {"type": "pu_move_speed", "name": "라이트닝 대시", "desc": "이동 속도 +12%", "color": Color(1.0, 1.0, 0.3), "image": "라이트닝대시.png", "stackable": true, "item": false, "weight": 20, "enabled": true},
   {"type": "momentum", "name": "질주 본능", "desc": "이동 중 공격력 +25%", "color": Color(1.0, 0.9, 0.4), "image": "", "stackable": false, "item": false, "weight": 10, "enabled": true},
   {"type": "stun_resist", "name": "굳은 심지", "desc": "거목 스턴 시간 -25% (최대 -75%)", "color": Color(0.6, 0.6, 0.7), "image": "", "stackable": true, "item": false, "weight": 20, "max_stacks": 3, "enabled": true},
-  {"type": "thorns", "name": "가시 반격", "desc": "스턴될 때 거목 최대 체력 2% 반사", "color": Color(0.5, 0.7, 0.4), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": false},
+  {"type": "thorns", "name": "가시 반격", "desc": "스턴될 때 거목 최대 체력 2% 반사", "color": Color(0.5, 0.7, 0.4), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": true},
   # ── 시간 (파워업) ──
   {"type": "finale", "name": "막판 스퍼트", "desc": "마지막 10초간 전 스탯 +50%", "color": Color(0.4, 1.0, 0.4), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": true},
   # ── 도박 (파워업) ──
   {"type": "cursed_scythe", "name": "저주받은 낫", "desc": "코인 +50%, 경험치 -40%", "color": Color(0.6, 0.2, 0.6), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": true},
   # ── 성장 (파워업) ──
-  {"type": "level_burst", "name": "레벨업 충격", "desc": "레벨업 시 주변 풀 즉시 처치", "color": Color(0.7, 0.9, 1.0), "image": "", "stackable": false, "item": false, "weight": 10, "enabled": false},
+  {"type": "level_burst", "name": "레벨업 충격", "desc": "레벨업 시 주변 풀 즉시 처치", "color": Color(0.7, 0.9, 1.0), "image": "", "stackable": false, "item": false, "weight": 10, "enabled": true},
   {"type": "seed_blessing", "name": "씨앗 축복", "desc": "씨앗 획득 시 8초간 전 스탯 +15%", "color": Color(0.5, 0.9, 0.5), "image": "", "stackable": false, "item": false, "weight": 10, "enabled": true},
   {"type": "xp_gain", "name": "떡잎 부적", "desc": "레벨업 게이지 획득량 +20%", "color": Color(0.6, 0.9, 0.6), "image": "", "stackable": true, "item": false, "weight": 20, "enabled": true},
   {"type": "reroll", "name": "리롤 토큰", "desc": "파워업 3택 다시 뽑기 +1", "color": Color(0.5, 0.7, 1.0), "image": "", "stackable": true, "item": false, "weight": 10, "enabled": false},
@@ -60,11 +60,11 @@ const POWERUP_DATA = [
   {"type": "double_or_nothing", "name": "더블 오어 낫싱", "desc": "50% 코인 2배 / 50% 전부 잃음", "color": Color(0.8, 0.2, 0.8), "image": "더블오어더스트.png", "stackable": false, "item": true, "weight": 10, "enabled": true},
   {"type": "all_in", "name": "올인", "desc": "8초간 전 스탯 +80%", "color": Color(0.9, 0.3, 0.5), "image": "", "stackable": false, "item": true, "weight": 4, "enabled": true},
   {"type": "instant_level", "name": "즉시 레벨업", "desc": "즉시 레벨업 1회", "color": Color(0.7, 0.9, 1.0), "image": "", "stackable": false, "item": true, "weight": 4, "enabled": true},
-  {"type": "uproot", "name": "뿌리 뽑기", "desc": "거목/정예에 즉시 큰 피해", "color": Color(0.6, 0.4, 0.2), "image": "", "stackable": false, "item": true, "weight": 4, "enabled": false},
-  {"type": "lightning_mow", "name": "번개 벌초", "desc": "랜덤 다수 풀 즉시 처치", "color": Color(0.8, 0.9, 1.0), "image": "", "stackable": false, "item": true, "weight": 10, "enabled": false},
-  {"type": "time_freeze", "name": "시간 정지", "desc": "타이머 잠깐 정지, 수확 계속", "color": Color(0.6, 0.8, 1.0), "image": "", "stackable": false, "item": true, "weight": 4, "enabled": false},
-  {"type": "fertilizer", "name": "거름 살포", "desc": "짧은 시간 풀 재생·밀도 폭증", "color": Color(0.5, 0.8, 0.3), "image": "", "stackable": false, "item": true, "weight": 10, "enabled": false},
-  {"type": "golden_rain", "name": "황금비", "desc": "잠깐 코인·황금풀이 쏟아짐", "color": Color(1.0, 0.9, 0.3), "image": "", "stackable": false, "item": true, "weight": 4, "enabled": false},
+  {"type": "uproot", "name": "뿌리 뽑기", "desc": "거목/정예에 즉시 큰 피해", "color": Color(0.6, 0.4, 0.2), "image": "", "stackable": false, "item": true, "weight": 4, "enabled": true},
+  {"type": "lightning_mow", "name": "번개 벌초", "desc": "랜덤 다수 풀 즉시 처치", "color": Color(0.8, 0.9, 1.0), "image": "", "stackable": false, "item": true, "weight": 10, "enabled": true},
+  {"type": "time_freeze", "name": "시간 정지", "desc": "타이머 잠깐 정지, 수확 계속", "color": Color(0.6, 0.8, 1.0), "image": "", "stackable": false, "item": true, "weight": 4, "enabled": true},
+  {"type": "fertilizer", "name": "거름 살포", "desc": "짧은 시간 풀 재생·밀도 폭증", "color": Color(0.5, 0.8, 0.3), "image": "", "stackable": false, "item": true, "weight": 10, "enabled": true},
+  {"type": "golden_rain", "name": "황금비", "desc": "잠깐 코인·황금풀이 쏟아짐", "color": Color(1.0, 0.9, 0.3), "image": "", "stackable": false, "item": true, "weight": 4, "enabled": true},
 ]
 
 static func get_powerup_texture(data: Dictionary) -> Texture2D:

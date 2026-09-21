@@ -29,6 +29,7 @@ const BGM_PATHS: Array = [
 var session_time_remaining: float = SESSION_TIME + GameManager.get_session_time_bonus()
 var session_total_time: float = SESSION_TIME + GameManager.get_session_time_bonus()
 var session_ended: bool = false
+var _freeze_timer: float = 0.0  # 시간 정지 아이템
 var session_ready: bool = false
 var bgm_player: AudioStreamPlayer
 var _tick_sfx: AudioStreamPlayer = null
@@ -65,6 +66,9 @@ func _ready() -> void:
   # 거목 처치 → 월드 클리어 → 세션 종료
   GameManager.goomok_cleared.connect(_on_goomok_cleared)
 
+  # 시간 정지 아이템
+  GameManager.time_freeze_requested.connect(func(d): _freeze_timer = d)
+
   # Style progress bar
   var bg_style = StyleBoxFlat.new()
   bg_style.bg_color = Color(0.2, 0.2, 0.2, 0.5)
@@ -90,7 +94,11 @@ func _process(delta: float) -> void:
   if session_ended or not session_ready:
     return
 
-  session_time_remaining -= delta
+  # 시간 정지: 타이머만 멈추고 수확은 계속
+  if _freeze_timer > 0.0:
+    _freeze_timer -= delta
+  else:
+    session_time_remaining -= delta
   # 막판 스퍼트: 제한시간 마지막 10초
   GameManager.finale_active = session_time_remaining <= 10.0
   if session_time_remaining <= 0:

@@ -517,6 +517,11 @@ func apply_attack_stun() -> void:
   _on_monster_hit(self)
   # 굳은 심지(stun_resist): 스턴 시간 단축
   hit_debuff_timer *= GameManager.get_stun_duration_mult()
+  # 가시 반격(thorns): 스턴 시 거목 최대 체력 2% 반사
+  if GameManager.pu("thorns") > 0:
+    var g = get_tree().get_first_node_in_group("goomok")
+    if g and g.has_method("take_damage"):
+      g.take_damage(int(g.max_hp * 0.02), global_position)
 
 func _on_monster_hit(monster: Node2D) -> void:
   is_hit_debuffed = true

@@ -251,6 +251,13 @@ signal golden_bloom_requested()
 signal golden_grass_cut()
 signal field_clear_requested()
 signal blackhole_requested()
+# 배치3 즉발/성장 효과
+signal lightning_mow_requested(count: int)
+signal fertilizer_requested()
+signal golden_rain_requested()
+signal uproot_requested()
+signal time_freeze_requested(duration: float)
+signal level_burst_requested(radius_mult: float)
 
 # 게이지 시그널 (구 분노 → 세션 레벨업 게이지로 재정의)
 signal fury_changed(value: float)          # 현재 레벨 내 누적 XP 변경
@@ -645,6 +652,7 @@ func add_fury(amount: float) -> void:
     session_xp -= need
     session_level += 1
     if pu("compound") > 0: compound_bonus += 0.03  # 복리 성장
+    if pu("level_burst") > 0: level_burst_requested.emit(2.0)  # 레벨업 충격
     level_up.emit(session_level)
     need = get_fury_max()
   if session_level >= cap:
@@ -761,7 +769,8 @@ signal items_changed(items: Array)
 const ITEM_DROP_POOL: Array = [
   "extra_time", "gold_rush", "overdrive", "golden_bloom", "double_or_nothing",
   "harvest_madness", "field_clear", "blackhole", "heavy_blade", "all_in",
-  "growth_spurt", "instant_level",
+  "growth_spurt", "instant_level", "uproot", "lightning_mow", "time_freeze",
+  "fertilizer", "golden_rain",
 ]
 
 func random_item_type() -> String:
@@ -937,10 +946,14 @@ const STACK_PU := [
   "sharp_blade", "pu_attack_speed", "pu_attack_range", "pu_magnet_range",
   "pu_move_speed", "pu_crit_chance", "pu_crit_damage", "coin_value",
   "coin_leech", "timber", "xp_gain", "stun_resist", "regrow_speed",
-  "pu_golden_chance", "interest",
+  "pu_golden_chance", "interest", "reroll",
 ]
-# 비누적 지속 파워업(보유 여부만)
-const FLAG_PU := ["momentum", "snowball", "seed_blessing", "cursed_scythe", "compound", "finale", "combo_harvest"]
+# 비누적 지속 파워업(보유 여부만) — 판정은 pu()>0로 각 지점에서 체크
+const FLAG_PU := [
+  "momentum", "snowball", "seed_blessing", "cursed_scythe", "compound",
+  "finale", "combo_harvest", "execute", "overkill", "midas",
+  "chain_reaction", "thorns", "level_burst",
+]
 
 func apply_powerup(type: String) -> void:
   if type in STACK_PU:
@@ -994,6 +1007,21 @@ func apply_powerup(type: String) -> void:
       powerup_acquired.emit("growth_spurt", 0)
     "instant_level":
       _force_level_up()
+      powerup_acquired.emit(type, 0)
+    "lightning_mow":
+      lightning_mow_requested.emit(12)
+      powerup_acquired.emit(type, 0)
+    "fertilizer":
+      fertilizer_requested.emit()
+      powerup_acquired.emit(type, 0)
+    "golden_rain":
+      golden_rain_requested.emit()
+      powerup_acquired.emit(type, 0)
+    "uproot":
+      uproot_requested.emit()
+      powerup_acquired.emit(type, 0)
+    "time_freeze":
+      time_freeze_requested.emit(4.0)
       powerup_acquired.emit(type, 0)
 
 func _force_level_up() -> void:

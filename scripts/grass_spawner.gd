@@ -79,6 +79,10 @@ func _ready() -> void:
   GameManager.golden_bloom_requested.connect(_on_golden_bloom)
   GameManager.field_clear_requested.connect(_on_field_clear)
   GameManager.blackhole_requested.connect(_on_blackhole)
+  GameManager.lightning_mow_requested.connect(_on_lightning_mow)
+  GameManager.fertilizer_requested.connect(_on_fertilizer)
+  GameManager.golden_rain_requested.connect(_on_golden_rain)
+  GameManager.level_burst_requested.connect(_on_level_burst)
 
 func setup_multimesh() -> void:
   # Create MultiMesh for efficient grass rendering
@@ -517,6 +521,9 @@ func attack_grass_in_area(center: Vector2, radius: float) -> Dictionary:
     hit_count += 1
     var hp_before = data.health
     data.health -= damage
+    # 참수: 최대 체력 20% 이하면 즉시 처치
+    if data.health > 0 and GameManager.pu("execute") > 0 and float(data.health) <= data.max_health * 0.2:
+      data.health = 0
     if is_crit:
       data.crit_timer = 0.2
     else:
@@ -537,6 +544,10 @@ func attack_grass_in_area(center: Vector2, radius: float) -> Dictionary:
       total_value += data.value
       total_max_health += GameManager.grass_data_list[data.type].max_health
       total_xp += data.type + 1
+      # 오버킬 환원: 초과 데미지 비례 코인 보너스(수렴형)
+      if GameManager.pu("overkill") > 0:
+        var excess = float(maxi(0, damage - hp_before))
+        data["ok_bonus"] = int(data.value * (excess / (excess + float(data.max_health))))
       attacked_positions.append(Vector2(grid_pos.x, grid_pos.y))
       if data.type == 5 and GameManager.session_buff_golden_luck:
         GameManager.golden_grass_cut.emit()
@@ -550,6 +561,21 @@ func attack_grass_in_area(center: Vector2, radius: float) -> Dictionary:
       total_xp += ck.type + 1
       attacked_positions.append(Vector2(ck.grid_pos.x, ck.grid_pos.y))
 
+  # 연쇄 반응: 처치 시 30% 확률로 인접 풀 1개 즉시 처치(전파분 재발동 X)
+  if GameManager.pu("chain_reaction") > 0:
+    for opos in attacked_positions.duplicate():
+      if randf() >= 0.3:
+        continue
+      var victim = _find_nearby_uncut(Vector2i(int(opos.x), int(opos.y)), 120.0)
+      if victim != Vector2i(-999999, -999999):
+        var vd = grass_data[victim]
+        vd.cut = true
+        vd.regen_timer = 0.0
+        _mark_grass_cut(victim)
+        total_value += vd.value
+        total_xp += vd.type + 1
+        attacked_positions.append(Vector2(victim.x, victim.y))
+
   # Spawn coins for cut grass (GrassData.drop_chance / guaranteed_drop)
   for pos in attacked_positions:
     var grid_pos = Vector2i(int(pos.x), int(pos.y))
@@ -560,6 +586,10 @@ func attack_grass_in_area(center: Vector2, radius: float) -> Dictionary:
         # 황금풀(type 5)에 보상 배율 적용
         if grass_data[grid_pos].type == 5:
           coin_value = roundi(coin_value * GameManager.get_golden_reward_mult())
+        coin_value += int(grass_data[grid_pos].get("ok_bonus", 0))  # 오버킬 보너스
+        # 미다스: 낮은 확률 즉석 황금 보상
+        if GameManager.pu("midas") > 0 and randf() < 0.03:
+          coin_value *= 3
         spawn_coin(pos, coin_value)
 
   if attacked_positions.size() > 0:
@@ -666,6 +696,77 @@ func _on_blackhole() -> void:
   for coin in coins:
     if is_instance_valid(coin) and not coin.is_collected:
       coin.is_being_collected = true
+
+# 인접 미절단 풀 1개 탐색(연쇄 반응). 없으면 sentinel 반환.
+func _find_nearby_uncut(from: Vector2i, radius: float) -> Vector2i:
+  var center = Vector2(from.x, from.y)
+  var min_chunk = get_chunk_coord(center - Vector2(radius, radius))
+  var max_chunk = get_chunk_coord(center + Vector2(radius, radius))
+  for cx in range(min_chunk.x, max_chunk.x + 1):
+    for cy in range(min_chunk.y, max_chunk.y + 1):
+      var cc = Vector2i(cx, cy)
+      if not loaded_chunks.has(cc):
+        continue
+      for gp in loaded_chunks[cc]:
+        if gp == from or not grass_data.has(gp):
+          continue
+        if grass_data[gp].cut:
+          continue
+        if center.distance_to(Vector2(gp.x, gp.y)) <= radius:
+          return gp
+  return Vector2i(-999999, -999999)
+
+# 번개 벌초: 랜덤 다수 풀 즉시 처치
+func _on_lightning_mow(count: int) -> void:
+  var candidates: Array = []
+  for gp in grass_data:
+    if not grass_data[gp].cut:
+      candidates.append(gp)
+  candidates.shuffle()
+  for i in mini(count, candidates.size()):
+    var gp = candidates[i]
+    var d = grass_data[gp]
+    d.cut = true
+    d.regen_timer = 0.0
+    _mark_grass_cut(gp)
+    if d.type == 5 or randf() < GameManager.get_grass_drop_chance():
+      spawn_coin(Vector2(gp.x, gp.y), d.value)
+
+# 거름 살포: 잘린 풀 즉시 재생(수확 폭발)
+func _on_fertilizer() -> void:
+  for gp in grass_data:
+    var d = grass_data[gp]
+    if d.cut:
+      d.cut = false
+      d.health = d.max_health
+      d.regen_timer = 0.0
+      _mark_chunk_dirty(gp)
+
+# 황금비: 플레이어 주변에 코인 쏟아짐
+func _on_golden_rain() -> void:
+  if not player:
+    return
+  var center = player.global_position - global_position
+  for i in 20:
+    var off = Vector2(randf_range(-300, 300), randf_range(-300, 300))
+    spawn_coin(center + off, 100)
+
+# 레벨업 충격: 주변(공격 범위 ×radius_mult) 풀 즉시 처치
+func _on_level_burst(radius_mult: float) -> void:
+  if not player:
+    return
+  var center = player.global_position - global_position
+  var r = GameManager.get_attack_range() * radius_mult
+  for gp in grass_data:
+    var d = grass_data[gp]
+    if d.cut:
+      continue
+    if center.distance_to(Vector2(gp.x, gp.y)) <= r:
+      d.cut = true
+      d.regen_timer = 0.0
+      _mark_grass_cut(gp)
+      if d.type == 5 or randf() < GameManager.get_grass_drop_chance():
+        spawn_coin(Vector2(gp.x, gp.y), d.value)
 
 func _draw() -> void:
   # Draw chunk boundaries (debug only)

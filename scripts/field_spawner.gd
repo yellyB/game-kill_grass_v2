@@ -21,6 +21,7 @@ const SPAWN_MAX_R: float = 820.0
 func _ready() -> void:
 	player = get_tree().get_first_node_in_group("player")
 	GameManager.goomok_ready.connect(_on_goomok_ready)
+	GameManager.uproot_requested.connect(_on_uproot)
 	# 월드별 정예 밀도 = 씨앗 N에 비례(더 위험한 월드 = 정예 더 많음)
 	target_elites = clampi(2 + GameManager.selected_world, 2, 6)
 
@@ -67,6 +68,14 @@ func _spawn_container() -> void:
 func _on_elite_died(_e) -> void:
 	# 씨앗 드롭은 정예가 자체 처리. 재스폰은 _process가 담당.
 	pass
+
+# 뿌리 뽑기 아이템: 거목에 큰 피해 + 정예 즉시 처치
+func _on_uproot() -> void:
+	if is_instance_valid(_goomok):
+		_goomok.take_damage(int(_goomok.max_hp * 0.25), Vector2.ZERO)
+	for e in _elites:
+		if is_instance_valid(e):
+			e.take_damage(999999, Vector2.ZERO)
 
 func _on_goomok_ready() -> void:
 	for e in _elites:

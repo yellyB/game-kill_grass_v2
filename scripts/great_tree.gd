@@ -52,6 +52,7 @@ func setup(p_hp: float) -> void:
 	hp = max_hp
 
 func _ready() -> void:
+	add_to_group("goomok")
 	_build_visual()
 	visual.scale = Vector2.ZERO
 	var tw = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
