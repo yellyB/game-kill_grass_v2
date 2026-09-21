@@ -212,3 +212,11 @@ sim/  run_sim.gd  (+ balance_sim.py 보존)
 |------|
 | Windows/Linux export preset 정비, Android/iOS 정리 |
 | Steam SDK(Steamworks GDExtension) 연동 검토, 도전과제/클라우드 세이브 |
+
+## 정리 대기 (Cleanup Backlog)
+
+미사용이지만 즉시 삭제하지 않고 추적하는 파일 목록. v2 개편 완료 시 재확인 후 처리.
+
+| 파일 | 상태 | 처리 기준 |
+|------|------|-----------|
+| `scripts/settings_popup.gd` | 참조 0 (내가 만든 v2 공용 설정 팝업, 원본 main_menu 자체 설정에 밀려 미연결) | v2 개편에서 공용 설정 팝업 재사용 안 하기로 확정되면 삭제 |

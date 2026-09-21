@@ -1,4 +1,6 @@
 extends CanvasLayer
+## ⚠️ 삭제 예정(TODO): 현재 참조처 0. 원본 main_menu가 자체 설정 처리를 가지고 있어 미연결 상태.
+##   v2 개편에서 이 공용 팝업을 재사용하지 않기로 확정되면 이 파일 삭제.
 ## 공유 설정 팝업 — 메뉴/인게임 공용. 배경음/효과음 토글 + 데이터 초기화 + 닫기.
 ## paused 대응(PROCESS_MODE_ALWAYS). 언어 드롭다운은 i18n 데이터 확보 후 확장.
 signal closed()
