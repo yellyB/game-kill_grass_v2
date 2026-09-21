@@ -690,6 +690,34 @@ func get_item_slots() -> int:
     slots += 1
   return mini(slots, 3)
 
+# ── 아이템(즉발 소모품) 슬롯 ──
+# 컨테이너 파괴/상점으로 획득 → 슬롯 저장 → 스페이스로 발동(apply_powerup 재사용).
+var held_items: Array = []
+signal items_changed(items: Array)
+
+# 컨테이너에서 나오는 즉발 아이템 풀
+const ITEM_DROP_POOL: Array = [
+  "extra_time", "gold_rush", "overdrive", "golden_bloom",
+  "double_or_dust", "harvest_madness", "field_clear", "blackhole",
+]
+
+func random_item_type() -> String:
+  return ITEM_DROP_POOL[randi() % ITEM_DROP_POOL.size()]
+
+func add_item(type: String) -> bool:
+  if held_items.size() >= get_item_slots():
+    return false  # 슬롯 가득 (교체 UI는 후속)
+  held_items.append(type)
+  items_changed.emit(held_items)
+  return true
+
+func use_next_item() -> void:
+  if held_items.is_empty():
+    return
+  var t = held_items.pop_front()
+  items_changed.emit(held_items)
+  apply_powerup(t)
+
 # ── Skill total progress helper ──
 # Combines level and sub_level into a single progress value
 func get_skill_total_progress(type: String) -> int:
@@ -1503,6 +1531,8 @@ func reset_session_data() -> void:
   session_seeds = 0
   goomok_ready_state = false
   goomok_cleared_state = false
+  held_items.clear()
+  items_changed.emit(held_items)
   session_key_acquired = -1
   session_crown_acquired = false
   session_boss_reward = 0

@@ -47,11 +47,26 @@ func setup_seed(p_target: Node2D) -> void:
 	is_seed = true
 	target = p_target
 
+var is_item_drop: bool = false
+var item_drop_type: String = ""
+
+func setup_item(p_type: String, p_target: Node2D) -> void:
+	is_item_drop = true
+	item_drop_type = p_type
+	target = p_target
+	# 파워업 이미지 재사용
+	var PowerupSelection = preload("res://scripts/powerup_selection.gd")
+	var data = PowerupSelection.get_powerup_data_by_type(p_type)
+	if not data.is_empty():
+		item_texture = PowerupSelection.get_powerup_texture(data)
+
 func _ready() -> void:
 	if is_key:
 		_build_key_visual()
 	elif is_seed:
 		_build_seed_visual()
+	elif is_item_drop:
+		_build_item_visual()
 	elif is_gem:
 		_build_gem_visual()
 	elif use_potion_visual:
@@ -178,6 +193,15 @@ func _build_gem_visual() -> void:
 	])
 	add_child(highlight)
 
+func _build_item_visual() -> void:
+	if sprite and item_texture:
+		sprite.texture = item_texture
+		var tex_size = item_texture.get_size()
+		var maxdim = maxf(tex_size.x, tex_size.y)
+		if maxdim > 0.0:
+			var s = 30.0 / maxdim
+			sprite.scale = Vector2(s, s)
+
 func _build_seed_visual() -> void:
 	# 씨앗: 물방울형 갈색 씨앗 + 초록 새싹
 	if sprite:
@@ -238,6 +262,8 @@ func _collect() -> void:
 		GameManager.add_key(key_world_index)
 	elif is_seed:
 		GameManager.add_seed()
+	elif is_item_drop:
+		GameManager.add_item(item_drop_type)
 	elif is_gem:
 		GameManager.add_gem()
 		if gem_world >= 0:

@@ -49,6 +49,9 @@ func _ready() -> void:
   # 씨앗 / 거목 진행 표시
   _setup_seed_indicator()
 
+  # 아이템 슬롯 표시
+  _setup_item_slots()
+
 func _process(delta: float) -> void:
   # Update timed buff countdowns
   _update_buff_timers()
@@ -221,6 +224,49 @@ func _on_goomok_ready_hud() -> void:
   if seed_label:
     seed_label.text = "▲"
     seed_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.35))
+
+# ── 아이템 슬롯 ──
+
+var item_slots_container: HBoxContainer = null
+
+func _setup_item_slots() -> void:
+  item_slots_container = HBoxContainer.new()
+  item_slots_container.position = Vector2(0, 150)
+  item_slots_container.add_theme_constant_override("separation", 8)
+  item_slots_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+  padded_area.add_child(item_slots_container)
+  GameManager.items_changed.connect(_refresh_item_slots)
+  _refresh_item_slots(GameManager.held_items)
+
+func _refresh_item_slots(items: Array) -> void:
+  if item_slots_container == null:
+    return
+  for c in item_slots_container.get_children():
+    c.queue_free()
+  var slots = GameManager.get_item_slots()
+  var PowerupSelection = preload("res://scripts/powerup_selection.gd")
+  for i in range(slots):
+    var slot = Panel.new()
+    slot.custom_minimum_size = Vector2(52, 52)
+    slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    var sb = StyleBoxFlat.new()
+    sb.bg_color = Color(0.15, 0.15, 0.15, 0.55)
+    sb.set_corner_radius_all(8)
+    sb.set_border_width_all(2)
+    sb.border_color = Color(0.5, 0.5, 0.5, 0.6)
+    slot.add_theme_stylebox_override("panel", sb)
+    if i < items.size():
+      var data = PowerupSelection.get_powerup_data_by_type(items[i])
+      var tex = PowerupSelection.get_powerup_texture(data) if not data.is_empty() else null
+      if tex:
+        var icon = TextureRect.new()
+        icon.texture = tex
+        icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+        icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+        icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+        icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        slot.add_child(icon)
+    item_slots_container.add_child(slot)
 
 func _setup_fury_bar() -> void:
   fury_progress.max_value = 100.0
