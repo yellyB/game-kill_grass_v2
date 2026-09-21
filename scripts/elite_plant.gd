@@ -17,6 +17,8 @@ const _HP_BAR_SHOW_TIME: float = 1.5  # 풀과 동일: 마지막 피격 후 유�
 # 흔들림(풀 셰이더 값과 유사): 인스턴스별 위상으로 비동기 살랑
 var _sway_t: float = 0.0
 var _sway_phase: float = 0.0
+var _sway_node: Node2D = null   # 흔들림 축=밑동(뿌리 고정, 위만 흔들림)
+const _BASE_Y: float = 32.0     # 밑동 위치(pivot)
 const _HP_BAR_W: float = 56.0
 const _HP_BAR_Y: float = -52.0
 
@@ -42,32 +44,40 @@ func _ellipse(cx: float, cy: float, rx: float, ry: float, segs: int = 16) -> Pac
 	return pts
 
 func _build_visual() -> void:
+	# 흔들림 축을 밑동에 두기: _sway_node(밑동) → inner(-밑동) 안에 그림.
+	# 좌표는 그대로 쓰면서 회전 pivot만 밑동으로 이동 → 뿌리 고정, 위만 흔들림.
+	_sway_node = Node2D.new()
+	_sway_node.position = Vector2(0, _BASE_Y)
+	visual.add_child(_sway_node)
+	var inner = Node2D.new()
+	inner.position = Vector2(0, -_BASE_Y)
+	_sway_node.add_child(inner)
 	# 씨앗 꼬투리(씨방): 짧은 줄기 + 통통한 꼬투리 + 씨앗 알갱이
 	var stem = Polygon2D.new()
 	stem.color = Color(0.3, 0.5, 0.28)
 	stem.polygon = PackedVector2Array([Vector2(-4, 32), Vector2(4, 32), Vector2(2, 6), Vector2(-2, 6)])
-	visual.add_child(stem)
+	inner.add_child(stem)
 	# 꼬투리 본체 (세로 타원)
 	var pod = Polygon2D.new()
 	pod.color = Color(0.42, 0.62, 0.3)
 	pod.polygon = _ellipse(0, -12, 16, 26, 20)
-	visual.add_child(pod)
+	inner.add_child(pod)
 	# 꼬투리 밝은 면(왼쪽 위 반사)
 	var pod_hl = Polygon2D.new()
 	pod_hl.color = Color(0.56, 0.76, 0.4)
 	pod_hl.polygon = _ellipse(-3, -15, 8, 17, 16)
-	visual.add_child(pod_hl)
+	inner.add_child(pod_hl)
 	# 씨앗 알갱이 3개(세로로 담김) — 씨앗임을 알아보기 쉽게 크게
 	for i in 3:
 		var seed = Polygon2D.new()
 		seed.color = Color(0.48, 0.34, 0.16)
 		seed.polygon = _ellipse(0, -26 + i * 12, 8.0, 9.5, 12)
-		visual.add_child(seed)
+		inner.add_child(seed)
 		# 씨앗 하이라이트(입체감 + 가독성)
 		var seed_hl = Polygon2D.new()
 		seed_hl.color = Color(0.62, 0.48, 0.28)
 		seed_hl.polygon = _ellipse(-2, -28 + i * 12, 3.5, 4.5, 10)
-		visual.add_child(seed_hl)
+		inner.add_child(seed_hl)
 	# HP 바 (식물 위) — 풀처럼 피격 시에만 표시
 	_hp_bar_root = Node2D.new()
 	_hp_bar_root.visible = false
@@ -82,11 +92,12 @@ func _build_visual() -> void:
 	_hp_bar_root.add_child(_hp_fill)
 
 func _process(delta: float) -> void:
-	# 풀처럼 살랑 흔들림 (skew, 이중 sine + 위상). 정예 수가 적어 CPU 부담 없음.
-	_sway_t += delta
-	var s = sin(_sway_t * 5.0 + _sway_phase) * 0.12
-	s += sin(_sway_t * 8.5 + _sway_phase * 1.3) * 0.06
-	visual.skew = s * 0.7
+	# 풀처럼 살랑 흔들림: 밑동 pivot 회전(뿌리 고정, 위만 흔들림). 정예 수 적어 CPU 부담 없음.
+	if _sway_node:
+		_sway_t += delta
+		var s = sin(_sway_t * 5.0 + _sway_phase) * 0.12
+		s += sin(_sway_t * 8.5 + _sway_phase * 1.3) * 0.06
+		_sway_node.rotation = s * 0.7
 	if _hp_bar_timer > 0.0:
 		_hp_bar_timer -= delta
 		if _hp_bar_timer <= 0.0 and _hp_bar_root:
