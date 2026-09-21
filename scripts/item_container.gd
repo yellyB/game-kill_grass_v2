@@ -64,8 +64,9 @@ func _die() -> void:
 		return
 	_dead = true
 	var player = get_tree().get_first_node_in_group("player")
+	# 컨테이너 = 열매(아이템 재화) 공급. 소량 드롭 → 상점에서 아이템 구매.
 	var drop = DROPPED_ITEM.instantiate()
-	drop.setup_item(GameManager.random_item_type(), player)
+	drop.setup_token(randi_range(2, 4), player)
 	get_parent().add_child(drop)
 	drop.global_position = global_position
 	var tw = create_tween()

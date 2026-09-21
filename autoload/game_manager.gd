@@ -784,6 +784,8 @@ func clear_current_world() -> void:
   add_money(session_boss_reward)
   # 게임 레벨 XP: 거목 처치 = K×√(거목HP)
   add_game_xp(Progression.goomok_xp(w, strength))
+  # 열매(아이템 재화) 보너스: 거목 처치 시 다량(월드 비례)
+  add_token(10 + w * 5)
   SaveManager.save_game()
   goomok_cleared.emit()
 
@@ -814,12 +816,35 @@ func get_item_slots() -> int:
     slots += 1
   return mini(slots, 3)
 
-# ── 아이템(즉발 소모품) 슬롯 ──
-# 컨테이너 파괴/상점으로 획득 → 슬롯 저장 → 스페이스로 발동(apply_powerup 재사용).
+# ── 아이템(즉발 소모품) 슬롯 = 영구 로드아웃 ──
+# 상점에서 열매로 구매 → 슬롯에 보유(영구, 세션 넘어 유지) → 1/2/3 키로 발동(소모).
 var held_items: Array = []
 signal items_changed(items: Array)
 signal item_acquired(type: String)       # 획득 시 이름 알림용
 signal item_slot_full(type: String)      # 슬롯 가득 차 획득 실패
+
+# ── 열매(아이템 재화) ──
+var owned_tokens: int = 0
+signal token_changed(amount: int)
+
+func add_token(count: int) -> void:
+  if count <= 0:
+    return
+  owned_tokens += count
+  token_changed.emit(owned_tokens)
+
+# 상점 구매: 열매로 아이템을 슬롯에 추가(슬롯 수만큼 보유 제한)
+func buy_item(type: String, price: int) -> bool:
+  if held_items.size() >= get_item_slots():
+    return false
+  if owned_tokens < price:
+    return false
+  owned_tokens -= price
+  token_changed.emit(owned_tokens)
+  held_items.append(type)
+  items_changed.emit(held_items)
+  SaveManager.save_game()
+  return true
 
 # 컨테이너에서 나오는 즉발 아이템 풀 (구현된 것만)
 const ITEM_DROP_POOL: Array = [
@@ -1608,6 +1633,8 @@ func get_save_data() -> Dictionary:
     "has_ever_transcended": has_ever_transcended,
     "game_xp": game_xp,
     "active_rune": active_rune,
+    "owned_tokens": owned_tokens,
+    "held_items": held_items.duplicate(),
     "bgm_enabled": bgm_enabled,
     "sfx_enabled": sfx_enabled,
     "vibration_enabled": vibration_enabled,
@@ -1652,6 +1679,11 @@ func load_save_data(data: Dictionary) -> void:
   has_ever_transcended = data.get("has_ever_transcended", false)
   game_xp = float(data.get("game_xp", 0.0))
   active_rune = str(data.get("active_rune", ""))
+  owned_tokens = int(data.get("owned_tokens", 0))
+  var saved_items = data.get("held_items", [])
+  held_items = []
+  for it in saved_items:
+    held_items.append(str(it))
   # 기존 세이브 호환: 초월 레벨이 있으면 이미 초월한 것
   if not has_ever_transcended and not saved_strength.is_empty():
     has_ever_transcended = true
@@ -1715,8 +1747,7 @@ func reset_session_data() -> void:
   session_seeds = 0
   goomok_ready_state = false
   goomok_cleared_state = false
-  held_items.clear()
-  items_changed.emit(held_items)
+  # held_items(아이템 슬롯)는 영구 로드아웃 → 세션 초기화하지 않음(쓰면 소모)
   session_key_acquired = -1
   session_crown_acquired = false
   session_boss_reward = 0
