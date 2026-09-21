@@ -268,6 +268,16 @@ func _refresh_item_slots(items: Array) -> void:
         icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
         icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
         slot.add_child(icon)
+    # 슬롯 번호(1/2/3) 라벨 — 어떤 키로 쓰는지 표시
+    var num = Label.new()
+    num.text = str(i + 1)
+    num.add_theme_font_size_override("font_size", 20)
+    num.add_theme_color_override("font_color", Color(1, 1, 1, 0.9))
+    num.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+    num.add_theme_constant_override("outline_size", 3)
+    num.position = Vector2(4, 0)
+    num.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    slot.add_child(num)
     item_slots_container.add_child(slot)
 
 func _setup_fury_bar() -> void:

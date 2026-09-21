@@ -452,10 +452,18 @@ var touch_direction: Vector2 = Vector2.ZERO
 var is_touching: bool = false
 
 func _unhandled_input(event: InputEvent) -> void:
-  # 스페이스 = 보유 아이템 발동 (일시정지 중엔 player가 입력을 안 받으므로 안전)
-  if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_SPACE:
-    GameManager.use_next_item()
-    return
+  # 1/2/3 키 = 슬롯1/2/3 아이템 발동 (일시정지 중엔 player가 입력을 안 받으므로 안전)
+  if event is InputEventKey and event.pressed and not event.echo:
+    match event.physical_keycode:
+      KEY_1:
+        GameManager.use_item(0)
+        return
+      KEY_2:
+        GameManager.use_item(1)
+        return
+      KEY_3:
+        GameManager.use_item(2)
+        return
   if event is InputEventScreenTouch:
     if event.pressed:
       is_touching = true

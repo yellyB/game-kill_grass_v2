@@ -842,9 +842,14 @@ func add_item(type: String) -> bool:
   return true
 
 func use_next_item() -> void:
-  if held_items.is_empty():
+  use_item(0)
+
+# 슬롯 인덱스(0=1키,1=2키,2=3키)로 아이템 발동
+func use_item(index: int) -> void:
+  if index < 0 or index >= held_items.size():
     return
-  var t = held_items.pop_front()
+  var t = held_items[index]
+  held_items.remove_at(index)
   items_changed.emit(held_items)
   apply_powerup(t)
 
