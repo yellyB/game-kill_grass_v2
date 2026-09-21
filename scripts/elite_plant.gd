@@ -10,6 +10,9 @@ var max_hp: float = 20.0
 var hp: float = 20.0
 var _dead: bool = false
 var _base_scale: Vector2 = Vector2.ONE
+var _hp_fill: Polygon2D = null
+const _HP_BAR_W: float = 56.0
+const _HP_BAR_Y: float = -52.0
 
 @onready var visual: Node2D = $Visual
 
@@ -51,11 +54,30 @@ func _build_visual() -> void:
 	core.polygon = pts
 	core.position = Vector2(0, -4)
 	visual.add_child(core)
+	# HP 바 (식물 위)
+	var bar_bg = Polygon2D.new()
+	bar_bg.color = Color(0.1, 0.1, 0.1, 0.7)
+	bar_bg.polygon = _rect(-_HP_BAR_W * 0.5, _HP_BAR_Y, _HP_BAR_W, 8)
+	visual.add_child(bar_bg)
+	_hp_fill = Polygon2D.new()
+	_hp_fill.color = Color(0.9, 0.35, 0.3)
+	_hp_fill.polygon = _rect(-_HP_BAR_W * 0.5, _HP_BAR_Y, _HP_BAR_W, 8)
+	visual.add_child(_hp_fill)
+
+func _rect(x: float, y: float, w: float, h: float) -> PackedVector2Array:
+	return PackedVector2Array([Vector2(x, y), Vector2(x + w, y), Vector2(x + w, y + h), Vector2(x, y + h)])
+
+func _update_hp_bar() -> void:
+	if _hp_fill == null:
+		return
+	var frac = clampf(hp / max_hp, 0.0, 1.0)
+	_hp_fill.polygon = _rect(-_HP_BAR_W * 0.5, _HP_BAR_Y, _HP_BAR_W * frac, 8)
 
 func take_damage(dmg: int, _from_pos: Vector2) -> void:
 	if _dead:
 		return
 	hp -= float(dmg)
+	_update_hp_bar()
 	# 피격 플래시
 	visual.modulate = Color(2, 2, 2)
 	var tw = create_tween()
