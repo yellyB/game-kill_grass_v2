@@ -333,10 +333,10 @@ func _apply_attack_damage(swing_dir: Vector2) -> void:
   if result.crit:
     _spawn_crit_effect(swing_dir)
 
-  # Send fury particles toward gauge (HUD handles accumulation on arrival)
-  if result.fury > 0:
+  # Send XP particles toward level gauge (HUD handles accumulation on arrival)
+  if result.xp > 0:
     var screen_pos = get_viewport().get_canvas_transform() * attack_center
-    GameManager.fury_feed_requested.emit(result.fury, screen_pos)
+    GameManager.fury_feed_requested.emit(result.xp, screen_pos)
 
 func update_attack_range() -> void:
   var base_range = GameManager.get_attack_range()

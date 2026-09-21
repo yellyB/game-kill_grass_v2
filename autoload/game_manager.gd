@@ -1,5 +1,9 @@
 extends Node
 
+# core/ SSOT (밸런스 곡선 — 순수 정적 함수)
+const Progression = preload("res://core/progression.gd")
+const Balance = preload("res://core/balance_data.gd")
+
 # UI constants
 const SCREEN_PADDING_H: float = 40.0
 const SCREEN_PADDING_V: float = 60.0
@@ -195,45 +199,29 @@ signal golden_grass_cut()
 signal field_clear_requested()
 signal blackhole_requested()
 
-signal fury_changed(value: float)
-signal fury_boss_requested()
-signal fury_gauge_dismissed()
-signal fury_feed_requested(amount: float, screen_pos: Vector2)
+# 게이지 시그널 (구 분노 → 세션 레벨업 게이지로 재정의)
+signal fury_changed(value: float)          # 현재 레벨 내 누적 XP 변경
+signal level_up(new_level: int)            # 세션 레벨업 발생 (파워업 3택 트리거)
+signal fury_feed_requested(amount: float, screen_pos: Vector2)  # 풀 벨 때 XP 입자 피드
 signal boss_key_collected(world_index: int)
 
-# 몬스터 분노 시스템
-var fury: float = 0.0
-var fury_boss_alive: bool = false
+# 세션 레벨업 시스템 (구 분노 게이지 재활용)
+# XP 원천 = 벤 풀 티어 가중치(새싹1 · 잔디2 · 여린풀3 · 강한풀4 · 초강풀5 · 황금풀6).
+# 곡선/캡은 core/progression + balance_data 소유(SLEVEL_TOTAL=1300, Lv10캡).
+var session_level: int = 1
+var session_xp: float = 0.0                # 현재 레벨 내 누적 XP
 var session_key_acquired: int = -1  # 세션 중 보스 드롭 열쇠 (-1 = 없음)
 var session_crown_acquired: bool = false  # 세션 중 황금 왕관 획득 여부
-# 월드별 분노 필요 수치 (0초월 기준)
-const FURY_THRESHOLDS: Array = [300.0, 1500.0, 6000.0, 18750.0, 105000.0, 168000.0, 280000.0]
 
 const STRENGTH_MULTIPLIERS: Array = [1.0, 1.5, 2.0, 3.0]
 
+# 세션 레벨 상한 (기본 10, 만개 룬 장착 시 +2 — 룬은 후속 슬라이스)
+func get_session_level_cap() -> int:
+  return Balance.SESSION_LV_CAP
+
+# 현재 레벨 → 다음 레벨 필요 XP (게이지 만충 기준). 게이지 %표시에 사용.
 func get_fury_max() -> float:
-  var idx = clampi(selected_world, 0, FURY_THRESHOLDS.size() - 1)
-  var base = FURY_THRESHOLDS[idx]
-  var strength = get_world_strength_level(selected_world)
-  if strength == 0:
-    return base
-  # 1초월 = +2월드의 0초월 분노치
-  var ref_idx = idx + 2
-  var result: float
-  if ref_idx >= FURY_THRESHOLDS.size():
-    result = base * (1.0 + strength * 0.3)
-  else:
-    var target = FURY_THRESHOLDS[ref_idx]
-    var gap = target - base
-    if strength == 1:
-      result = target
-    elif strength == 2:
-      result = target + gap
-    else:
-      result = target + gap + gap * 1.46
-  # 초월 배율 적용
-  var mult = STRENGTH_MULTIPLIERS[clampi(strength, 0, STRENGTH_MULTIPLIERS.size() - 1)]
-  return result * mult
+  return Progression.slevel_need(session_level)
 
 var _sfx_click: AudioStreamPlayer
 var _sfx_confirm: AudioStreamPlayer
@@ -587,17 +575,21 @@ func get_random_grass_data() -> GrassData:
       return grass_data_list[mini(base_type + 1, 4)]
     return grass_data_list[base_type]
 
+# 세션 XP 추가 → 필요 XP 도달 시 레벨업(파워업 3택). fury_rate 스킬이 충전속도 배율.
 func add_fury(amount: float) -> void:
-  if fury_boss_alive:
+  var cap = get_session_level_cap()
+  if session_level >= cap:
     return
-  var fury_max = get_fury_max()
-  fury = minf(fury + amount * get_fury_rate_mult(), fury_max)
-  fury_changed.emit(fury)
-  if fury >= fury_max:
-    fury_boss_alive = true
-    fury_boss_requested.emit()
-    fury = 0.0
-    fury_changed.emit(fury)
+  session_xp += amount * get_fury_rate_mult()
+  var need = get_fury_max()
+  while session_xp >= need and session_level < cap:
+    session_xp -= need
+    session_level += 1
+    level_up.emit(session_level)
+    need = get_fury_max()
+  if session_level >= cap:
+    session_xp = 0.0
+  fury_changed.emit(session_xp)
 
 func add_money(amount: int) -> void:
   session_money = max(0, session_money + amount)
@@ -1407,7 +1399,8 @@ func reset_session_data() -> void:
   session_buff_golden_luck = false
   timed_buffs.clear()
   hit_penalty_active = false
-  fury = 0.0
+  session_level = 1
+  session_xp = 0.0
   session_key_acquired = -1
   session_crown_acquired = false
   session_boss_reward = 0

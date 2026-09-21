@@ -464,6 +464,7 @@ func attack_grass_in_area(center: Vector2, radius: float) -> Dictionary:
   var total_value = 0
   var hit_count = 0
   var total_max_health = 0
+  var total_xp = 0  # 세션 레벨 XP = 벤 풀 티어 가중치 합(type+1: 새싹1..초강5, 황금6)
   var attacked_positions: Array = []
   var base_damage = WeaponManager.get_weapon_damage()
   var is_crit = randf() < GameManager.get_crit_chance()
@@ -535,6 +536,7 @@ func attack_grass_in_area(center: Vector2, radius: float) -> Dictionary:
       _mark_grass_cut(grid_pos)
       total_value += data.value
       total_max_health += GameManager.grass_data_list[data.type].max_health
+      total_xp += data.type + 1
       attacked_positions.append(Vector2(grid_pos.x, grid_pos.y))
       if data.type == 5 and GameManager.session_buff_golden_luck:
         GameManager.golden_grass_cut.emit()
@@ -545,6 +547,7 @@ func attack_grass_in_area(center: Vector2, radius: float) -> Dictionary:
     for ck in crit_kills:
       total_value += ck.value
       total_max_health += GameManager.grass_data_list[ck.type].max_health
+      total_xp += ck.type + 1
       attacked_positions.append(Vector2(ck.grid_pos.x, ck.grid_pos.y))
 
   # Spawn coins for cut grass (GrassData.drop_chance / guaranteed_drop)
@@ -559,7 +562,7 @@ func attack_grass_in_area(center: Vector2, radius: float) -> Dictionary:
           coin_value = roundi(coin_value * GameManager.get_golden_reward_mult())
         spawn_coin(pos, coin_value)
 
-  return {"value": total_value, "hit": hit_count > 0, "fury": total_max_health, "crit": is_crit and hit_count > 0}
+  return {"value": total_value, "hit": hit_count > 0, "xp": total_xp, "fury": total_max_health, "crit": is_crit and hit_count > 0}
 
 func spawn_coin(pos: Vector2, value: int) -> void:
   var CoinScene = preload("res://scenes/world/coin.tscn")

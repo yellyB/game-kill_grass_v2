@@ -43,7 +43,7 @@ func _ready() -> void:
   # 몬스터 분노 bar styling
   _setup_fury_bar()
   GameManager.fury_changed.connect(_on_fury_changed)
-  GameManager.fury_boss_requested.connect(_on_fury_boss_spawned)
+  GameManager.level_up.connect(_on_level_up)
   GameManager.fury_feed_requested.connect(_on_fury_feed_requested)
 
 func _process(delta: float) -> void:
@@ -187,60 +187,26 @@ func _setup_fury_bar() -> void:
 func _on_fury_changed(value: float) -> void:
   if fury_hidden:
     return
-  var pct = value / GameManager.get_fury_max() * 100.0
+  # 레벨 캡 도달 시 게이지 만충 표시(더 이상 오르지 않음)
+  if GameManager.session_level >= GameManager.get_session_level_cap():
+    fury_progress.value = 100.0
+    fury_label.text = "Lv.%d" % GameManager.session_level
+    return
+  var need = GameManager.get_fury_max()
+  var pct = value / need * 100.0 if need > 0 else 0.0
   fury_progress.value = pct
   if OS.is_debug_build():
-    fury_label.text = "%d%% (%d/%d)" % [int(pct), int(value), int(GameManager.get_fury_max())]
+    fury_label.text = "Lv.%d %d%% (%d/%d)" % [GameManager.session_level, int(pct), int(value), int(need)]
   else:
-    fury_label.text = "%d%%" % int(pct)
+    fury_label.text = "Lv.%d %d%%" % [GameManager.session_level, int(pct)]
 
-func _on_fury_boss_spawned() -> void:
-  fury_hidden = true
-
-  # Vibrate on mobile
+# 세션 레벨업 → 파워업 3택 오버레이 표시(구 분노 보스 소환 대체)
+func _on_level_up(_new_level: int) -> void:
   if OS.has_feature("mobile"):
-    GameManager.vibrate(200)
-
-  # Fade out fury bar (no shake)
-  var fade_tween = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
-  fade_tween.tween_property(fury_hbox, "modulate:a", 0.0, 0.8)
-  fade_tween.tween_callback(func():
-    fury_hbox.visible = false
-  )
-
-  # Icon flash: fury icon appears at screen center, scales up huge + fades out
-  var viewport_size = get_viewport().get_visible_rect().size
-  var icon_texture = preload("res://resources/images/icon/monster.png")
-  var icon = TextureRect.new()
-  icon.texture = icon_texture
-  icon.expand_mode = 3  # EXPAND_FIT_WIDTH_PROPORTIONAL
-  icon.stretch_mode = 5  # STRETCH_KEEP_ASPECT_CENTERED
-  icon.custom_minimum_size = Vector2(80, 80)
-  icon.size = Vector2(80, 80)
-  icon.pivot_offset = Vector2(40, 40)
-  icon.position = viewport_size / 2.0 - Vector2(40, 40)
-  icon.modulate = Color(1, 0.3, 0.2, 0.9)
-  add_child(icon)
-
-  var center_pos = icon.position
-  # Phase 1: 중앙에서 흔들림 (0.8초)
-  var shake_tween = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
-  for i in 12:
-    var offset = Vector2(randf_range(-8, 8), randf_range(-8, 8))
-    shake_tween.tween_property(icon, "position", center_pos + offset, 0.035)
-    shake_tween.tween_property(icon, "position", center_pos, 0.035)
-  await shake_tween.finished
-
-  # Phase 2: 확대 + 흐려짐 (1.2초)
-  var icon_tween = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
-  icon_tween.set_parallel(true)
-  var target_scale = viewport_size.x / 80.0
-  icon_tween.tween_property(icon, "scale", Vector2(target_scale, target_scale), 1.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
-  icon_tween.tween_property(icon, "modulate:a", 0.0, 1.2).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
-  icon_tween.chain().tween_callback(func():
-    icon.queue_free()
-    GameManager.fury_gauge_dismissed.emit()
-  )
+    GameManager.vibrate(120)
+  _flash_fury_bar()
+  var selection = preload("res://scenes/ui/powerup_selection.tscn").instantiate()
+  get_tree().root.add_child(selection)
 
 # ── 분노 파티클 (풀 → 게이지) ──
 
