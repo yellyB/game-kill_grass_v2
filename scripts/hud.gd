@@ -40,11 +40,14 @@ func _ready() -> void:
   if OS.is_debug_build():
     _build_debug_buttons()
 
-  # 몬스터 분노 bar styling
+  # 세션 레벨 게이지 styling (구 분노 bar 재활용)
   _setup_fury_bar()
   GameManager.fury_changed.connect(_on_fury_changed)
   GameManager.level_up.connect(_on_level_up)
   GameManager.fury_feed_requested.connect(_on_fury_feed_requested)
+
+  # 씨앗 / 거목 진행 표시
+  _setup_seed_indicator()
 
 func _process(delta: float) -> void:
   # Update timed buff countdowns
@@ -165,6 +168,59 @@ func _update_perm_buff(type: String, _level: int) -> void:
   perm_icons_hbox.add_child(icon)
 
 # ── 몬스터 분노 Bar ──
+
+# ── 씨앗 / 거목 진행 표시 ──
+
+var seed_label: Label = null
+var seed_container: HBoxContainer = null
+
+func _setup_seed_indicator() -> void:
+  seed_container = HBoxContainer.new()
+  seed_container.add_theme_constant_override("separation", 8)
+  seed_container.position = Vector2(0, 108)
+  seed_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+  seed_container.add_child(_make_seed_icon())
+  seed_label = Label.new()
+  seed_label.add_theme_font_size_override("font_size", 28)
+  seed_label.add_theme_color_override("font_color", Color(0.6, 0.9, 0.5))
+  seed_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+  seed_label.add_theme_constant_override("outline_size", 3)
+  seed_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+  seed_container.add_child(seed_label)
+  padded_area.add_child(seed_container)
+  _update_seed_label(GameManager.session_seeds, GameManager.get_seed_need())
+  GameManager.seed_changed.connect(_update_seed_label)
+  GameManager.goomok_ready.connect(_on_goomok_ready_hud)
+
+func _make_seed_icon() -> Control:
+  var c = Control.new()
+  c.custom_minimum_size = Vector2(28, 28)
+  c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+  var body = Polygon2D.new()
+  body.color = Color(0.55, 0.38, 0.18)
+  var pts: PackedVector2Array = []
+  for i in 12:
+    var a = TAU / 12.0 * i
+    pts.append(Vector2(14 + cos(a) * 7.0, 16 + sin(a) * 9.0))
+  body.polygon = pts
+  c.add_child(body)
+  var sprout = Polygon2D.new()
+  sprout.color = Color(0.35, 0.8, 0.35)
+  sprout.polygon = PackedVector2Array([
+    Vector2(14, 7), Vector2(19, 1), Vector2(15, 0), Vector2(14, 4),
+    Vector2(13, 0), Vector2(9, 1)
+  ])
+  c.add_child(sprout)
+  return c
+
+func _update_seed_label(count: int, need: int) -> void:
+  if seed_label:
+    seed_label.text = "%d / %d" % [count, need]
+
+func _on_goomok_ready_hud() -> void:
+  if seed_label:
+    seed_label.text = "▲"
+    seed_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.35))
 
 func _setup_fury_bar() -> void:
   fury_progress.max_value = 100.0
