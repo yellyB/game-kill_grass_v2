@@ -53,12 +53,17 @@ func _build_visual() -> void:
 	pod_hl.color = Color(0.56, 0.76, 0.4)
 	pod_hl.polygon = _ellipse(-3, -15, 8, 17, 16)
 	visual.add_child(pod_hl)
-	# 씨앗 알갱이 3개(세로로 담김)
+	# 씨앗 알갱이 3개(세로로 담김) — 씨앗임을 알아보기 쉽게 크게
 	for i in 3:
 		var seed = Polygon2D.new()
-		seed.color = Color(0.5, 0.38, 0.2)
-		seed.polygon = _ellipse(0, -24 + i * 10, 4.5, 5.5, 10)
+		seed.color = Color(0.48, 0.34, 0.16)
+		seed.polygon = _ellipse(0, -26 + i * 12, 8.0, 9.5, 12)
 		visual.add_child(seed)
+		# 씨앗 하이라이트(입체감 + 가독성)
+		var seed_hl = Polygon2D.new()
+		seed_hl.color = Color(0.62, 0.48, 0.28)
+		seed_hl.polygon = _ellipse(-2, -28 + i * 12, 3.5, 4.5, 10)
+		visual.add_child(seed_hl)
 	# HP 바 (식물 위) — 풀처럼 피격 시에만 표시
 	_hp_bar_root = Node2D.new()
 	_hp_bar_root.visible = false
