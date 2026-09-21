@@ -12,8 +12,10 @@ var _elites: Array = []
 var _containers: Array = []
 var _goomok: Node = null
 var _spawn_cooldown: float = 0.0
-var _container_cooldown: float = 4.0
+var _container_roll_t: float = 0.5
 var target_elites: int = 3
+
+const CONTAINER_DESPAWN_R: float = 1500.0  # 청크 이탈 대체: 멀어지면 정리
 
 const SPAWN_MIN_R: float = 420.0   # 공격범위 밖·화면 언저리
 const SPAWN_MAX_R: float = 820.0
@@ -35,12 +37,19 @@ func _process(delta: float) -> void:
 	if _elites.size() < target_elites and _spawn_cooldown <= 0.0:
 		_spawn_elite()
 		_spawn_cooldown = 0.7
-	# 아이템 컨테이너: 항상 1개 유지, 파괴 후 재등장(컨테이너 확률 스킬로 빈도↑)
+	# 아이템 컨테이너: 기획대로 "아이템 상자" 스킬 확률 기반 스폰(기본 0%, 최대 5%)
+	# 청크 진입 확률을 근사: 주기적으로 등장 확률만큼 롤(이동 중이 아니면 진입 없음)
 	_containers = _containers.filter(func(c): return is_instance_valid(c))
-	_container_cooldown -= delta
-	if _containers.size() < 1 and _container_cooldown <= 0.0:
-		_spawn_container()
-		_container_cooldown = 6.0 * (1.0 - clampf(GameManager.get_chest_spawn_chance() * 4.0, 0.0, 0.5))
+	_container_roll_t -= delta
+	if _container_roll_t <= 0.0:
+		_container_roll_t = 0.5
+		if is_instance_valid(player):
+			if GameManager.player_moving and randf() < GameManager.get_chest_spawn_chance():
+				_spawn_container()
+			# 멀어진 컨테이너 정리(청크 이탈 대체)
+			for c in _containers:
+				if is_instance_valid(c) and c.global_position.distance_to(player.global_position) > CONTAINER_DESPAWN_R:
+					c.queue_free()
 
 func _spawn_elite() -> void:
 	if not is_instance_valid(player):
