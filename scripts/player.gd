@@ -163,6 +163,7 @@ func _process(delta: float) -> void:
 
   input_direction = get_input_direction()
   input_direction_changed.emit(input_direction)
+  GameManager.player_moving = input_direction != Vector2.ZERO  # momentum 조건
 
   if input_direction != Vector2.ZERO:
     update_sprite_direction()
@@ -385,7 +386,7 @@ func _update_weapon_scale() -> void:
 
 func _attack_monsters_in_area(_center: Vector2, _radius: float) -> void:
   var base_damage = WeaponManager.get_weapon_damage()
-  var monster_mult = GameManager.get_monster_damage_mult()
+  var monster_mult = GameManager.get_monster_damage_mult() * GameManager.get_attack_power_mult() * GameManager.get_timber_mult()
   var is_crit = randf() < GameManager.get_crit_chance()
   var damage = roundi(base_damage * monster_mult)
   if is_crit:
@@ -425,9 +426,9 @@ func _on_attack_timer_timeout() -> void:
   can_attack = true
 
 func _on_powerup_acquired(type: String, _level: int) -> void:
-  if type == "attack_range":
+  if type == "pu_attack_range":
     update_attack_range()
-  if type == "magnet_range":
+  if type == "pu_magnet_range":
     queue_redraw()
 
 func _on_timed_buff_changed(_type: String, _duration: float) -> void:
@@ -514,6 +515,8 @@ func apply_attack_stun() -> void:
   if is_invincible:
     return
   _on_monster_hit(self)
+  # 굳은 심지(stun_resist): 스턴 시간 단축
+  hit_debuff_timer *= GameManager.get_stun_duration_mult()
 
 func _on_monster_hit(monster: Node2D) -> void:
   is_hit_debuffed = true

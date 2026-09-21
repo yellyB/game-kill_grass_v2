@@ -119,8 +119,8 @@ func collect() -> void:
     return
   is_collected = true
 
-  # Add money (gold rush doubles coins)
-  var actual_value = value * GameManager.get_coin_multiplier()
+  # Add money (코인 가치 배율: 파워업/골드러시 등)
+  var actual_value = int(round(value * GameManager.get_coin_multiplier()))
   GameManager.add_money(actual_value)
 
   # Accumulate floating text on player

@@ -162,13 +162,51 @@ func get_skill_sub_max(type: String) -> int:
   return def.get("sub_max", 5)
 
 # Session powerup buffs (reset each session)
-var session_buff_attack_speed: int = 0
-var session_buff_attack_range: int = 0
-var session_buff_magnet_range: int = 0
-var session_buff_move_speed: int = 0
+# 지속 파워업 스택: type -> stacks (통합 관리)
+var session_pu: Dictionary = {}
 var session_buff_critical_surge: bool = false
 var session_buff_critical_reaper: bool = false
 var session_buff_golden_luck: bool = false
+var player_moving: bool = false      # momentum 조건
+var session_kills: int = 0           # snowball 조건
+
+func pu(t: String) -> int:
+  return int(session_pu.get(t, 0))
+
+# 액티브(하베스트/올인/씨앗축복) 전 스탯 배율
+func get_global_active_mult() -> float:
+  var m := 1.0
+  if timed_buffs.has("harvest_madness"): m *= 1.8
+  if timed_buffs.has("all_in"): m *= 1.8
+  if timed_buffs.has("seed_blessing"): m *= 1.15
+  return m
+
+func get_attack_power_mult() -> float:
+  var m := 1.0 + pu("sharp_blade") * 0.15
+  if pu("momentum") > 0 and player_moving: m += 0.25
+  if pu("snowball") > 0: m += 0.02 * floori(session_kills / 100.0)
+  if timed_buffs.has("heavy_blade"): m *= 1.8
+  return m * get_global_active_mult()
+
+func get_coin_value_mult() -> float:
+  var m := 1.0 + pu("coin_value") * 0.12 + pu("coin_leech") * 0.08
+  if timed_buffs.has("gold_rush"): m *= 2.0
+  return m
+
+func get_timber_mult() -> float:
+  return 1.0 + pu("timber") * 0.30
+
+func get_xp_gain_mult() -> float:
+  return 1.0 + pu("xp_gain") * 0.20
+
+func get_stun_duration_mult() -> float:
+  return maxf(0.25, 1.0 - pu("stun_resist") * 0.25)
+
+func get_regrow_mult() -> float:
+  return 1.0 + pu("regrow_speed") * 0.20
+
+func register_kills(n: int) -> void:
+  session_kills += n
 
 # Timed buffs: { "gold_rush": remaining_seconds, ... }
 var timed_buffs: Dictionary = {}
@@ -263,16 +301,17 @@ func _ready() -> void:
   add_child(_sfx_skill_click)
   golden_grass_cut.connect(_on_golden_grass_cut)
 
-# 골든 럭: 황금풀 절단 시 랜덤 파워업 자동 적용
+# 골든 럭: 황금풀 절단 시 낮은 확률로 커먼(누적형) 파워업 자동 획득
 const GOLDEN_LUCK_POOL: Array = [
-  {"type": "attack_speed", "weight": 20},
-  {"type": "attack_range", "weight": 20},
-  {"type": "magnet_range", "weight": 20},
-  {"type": "move_speed", "weight": 20},
-  {"type": "critical_surge", "weight": 20},
-  {"type": "critical_reaper", "weight": 10},
-  {"type": "extra_time", "weight": 10},
-  {"type": "gold_rush", "weight": 10},
+  {"type": "sharp_blade", "weight": 20},
+  {"type": "pu_attack_speed", "weight": 20},
+  {"type": "pu_attack_range", "weight": 20},
+  {"type": "pu_magnet_range", "weight": 20},
+  {"type": "pu_move_speed", "weight": 20},
+  {"type": "coin_value", "weight": 20},
+  {"type": "coin_leech", "weight": 20},
+  {"type": "regrow_speed", "weight": 20},
+  {"type": "xp_gain", "weight": 20},
 ]
 
 func _on_golden_grass_cut() -> void:
@@ -581,7 +620,7 @@ func add_fury(amount: float) -> void:
   var cap = get_session_level_cap()
   if session_level >= cap:
     return
-  session_xp += amount * get_fury_rate_mult()
+  session_xp += amount * get_fury_rate_mult() * get_xp_gain_mult()
   var need = get_fury_max()
   while session_xp >= need and session_level < cap:
     session_xp -= need
@@ -631,6 +670,9 @@ func get_elite_hp() -> float:
 func add_seed(count: int = 1) -> void:
   if goomok_ready_state:
     return
+  # 씨앗 축복: 씨앗 획득 시 8초간 전 스탯 +15%
+  if pu("seed_blessing") > 0:
+    _start_timed_buff("seed_blessing", 8.0)
   session_seeds += count
   var need = get_seed_need()
   seed_changed.emit(session_seeds, need)
@@ -695,10 +737,11 @@ func get_item_slots() -> int:
 var held_items: Array = []
 signal items_changed(items: Array)
 
-# 컨테이너에서 나오는 즉발 아이템 풀
+# 컨테이너에서 나오는 즉발 아이템 풀 (구현된 것만)
 const ITEM_DROP_POOL: Array = [
-  "extra_time", "gold_rush", "overdrive", "golden_bloom",
-  "double_or_dust", "harvest_madness", "field_clear", "blackhole",
+  "extra_time", "gold_rush", "overdrive", "golden_bloom", "double_or_nothing",
+  "harvest_madness", "field_clear", "blackhole", "heavy_blade", "all_in",
+  "growth_spurt", "instant_level",
 ]
 
 func random_item_type() -> String:
@@ -781,12 +824,13 @@ func get_crit_chance() -> float:
   if session_buff_critical_surge:
     return 1.0
   var ticks = get_skill_total_progress("crit_chance")
-  return minf(ticks * 0.05, 1.0)
+  # 치명 확률은 자연 상한 100% (값 clamp가 아닌 설계 규칙)
+  return minf(ticks * 0.05 + pu("pu_crit_chance") * 0.08, 1.0)
 
 # 치명타 데미지: 1.2x → 3.7x, 틱당 +0.10 (총 25틱)
 func get_crit_damage_mult() -> float:
   var ticks = get_skill_total_progress("crit_damage")
-  var mult = 1.2 + ticks * 0.10
+  var mult = 1.2 + ticks * 0.10 + pu("pu_crit_damage") * 0.40
   if session_buff_critical_surge:
     mult *= 2.0
   return mult
@@ -804,9 +848,7 @@ func get_fury_rate_mult() -> float:
 # 황금풀 확률: 0% → (미정), 틱당 +0.1% (총 10틱 = 최대 1%)
 func get_golden_grass_chance() -> float:
   var ticks = get_skill_total_progress("golden_chance")
-  if ticks <= 0:
-    return 0.0
-  return ticks * 0.001
+  return ticks * 0.001 + pu("pu_golden_chance") * 0.02
 
 # 황금풀 보상 배율: 단계별 10%/11%/12%/13%/14% 복리 증가 (총 25틱, 최대 ~1,696원)
 func get_golden_reward_mult() -> float:
@@ -830,33 +872,32 @@ func get_grass_density_level() -> int:
 
 func get_magnet_range() -> float:
   var base = get_base_magnet_range()
-  var mult = 1.0 + session_buff_magnet_range * 0.5
+  var mult = 1.0 + pu("pu_magnet_range") * 0.25
   if timed_buffs.has("harvest_madness"):
     mult *= 2.0
   return base * mult
 
 func get_session_attack_speed_mult() -> float:
-  var mult = 1.0 + session_buff_attack_speed * 0.25
+  var mult = 1.0 + pu("pu_attack_speed") * 0.12
   if timed_buffs.has("overdrive"):
     mult *= 2.0  # +100%
-  if timed_buffs.has("harvest_madness"):
-    mult *= 2.0
+  if timed_buffs.has("heavy_blade"):
+    mult *= 0.8  # -20%
+  mult *= get_global_active_mult()
   if hit_penalty_active:
     mult *= 0.5
   return mult
 
 func get_session_attack_range_mult() -> float:
-  var mult = 1.0 + session_buff_attack_range * 0.25
-  if timed_buffs.has("harvest_madness"):
-    mult *= 1.5
+  var mult = 1.0 + pu("pu_attack_range") * 0.15
+  mult *= get_global_active_mult()
   return mult
 
 func get_session_move_speed_mult() -> float:
-  var mult = 1.0 + session_buff_move_speed * 0.5
+  var mult = 1.0 + pu("pu_move_speed") * 0.12
   if timed_buffs.has("overdrive"):
     mult *= 0.7  # -30%
-  if timed_buffs.has("harvest_madness"):
-    mult *= 2.0
+  mult *= get_global_active_mult()
   if hit_penalty_active:
     mult *= 0.5
   return mult
@@ -864,42 +905,52 @@ func get_session_move_speed_mult() -> float:
 func get_session_time_bonus() -> float:
   return get_skill_total_progress("session_time") * 3.0
 
-func get_coin_multiplier() -> int:
-  if timed_buffs.has("gold_rush"):
-    return 2
-  return 1
+# 코인 가치 배율 (float). 코인/보상 계산에 사용.
+func get_coin_multiplier() -> float:
+  return get_coin_value_mult()
 
 func get_timed_buff_remaining(type: String) -> float:
   return timed_buffs.get(type, 0.0)
 
+# 누적형 스탯 파워업(스택마다 효과 가산)
+const STACK_PU := [
+  "sharp_blade", "pu_attack_speed", "pu_attack_range", "pu_magnet_range",
+  "pu_move_speed", "pu_crit_chance", "pu_crit_damage", "coin_value",
+  "coin_leech", "timber", "xp_gain", "stun_resist", "regrow_speed",
+  "pu_golden_chance", "interest",
+]
+# 비누적 지속 파워업(보유 여부만)
+const FLAG_PU := ["momentum", "snowball", "seed_blessing"]
+
 func apply_powerup(type: String) -> void:
+  if type in STACK_PU:
+    session_pu[type] = pu(type) + 1
+    powerup_acquired.emit(type, pu(type))
+    return
+  if type in FLAG_PU:
+    session_pu[type] = 1
+    powerup_acquired.emit(type, 1)
+    return
   match type:
-    "attack_speed":
-      session_buff_attack_speed += 1
-      powerup_acquired.emit(type, session_buff_attack_speed)
-    "attack_range":
-      session_buff_attack_range += 1
-      powerup_acquired.emit(type, session_buff_attack_range)
-    "magnet_range":
-      session_buff_magnet_range += 1
-      powerup_acquired.emit(type, session_buff_magnet_range)
-    "move_speed":
-      session_buff_move_speed += 1
-      powerup_acquired.emit(type, session_buff_move_speed)
-    "critical_surge":
-      session_buff_critical_surge = true
-      powerup_acquired.emit(type, 1)
+    # ── 지속(플래그) ──
     "critical_reaper":
       session_buff_critical_reaper = true
       powerup_acquired.emit(type, 1)
     "golden_luck":
       session_buff_golden_luck = true
       powerup_acquired.emit(type, 1)
+    # ── 액티브(즉발 아이템) ──
     "overdrive":
       _start_timed_buff("overdrive", 10.0)
       powerup_acquired.emit(type, 1)
-    "extra_time":
-      extra_time_requested.emit(5.0)
+    "heavy_blade":
+      _start_timed_buff("heavy_blade", 10.0)
+      powerup_acquired.emit(type, 1)
+    "harvest_madness":
+      _start_timed_buff("harvest_madness", 8.0)
+      powerup_acquired.emit(type, 0)
+    "all_in":
+      _start_timed_buff("all_in", 8.0)
       powerup_acquired.emit(type, 0)
     "gold_rush":
       _start_timed_buff("gold_rush", 10.0)
@@ -907,36 +958,42 @@ func apply_powerup(type: String) -> void:
     "golden_bloom":
       golden_bloom_requested.emit()
       powerup_acquired.emit(type, 0)
-    "double_or_dust":
-      _apply_double_or_dust()
-    "monster_fury":
-      add_fury(get_fury_max() * 0.35 / get_fury_rate_mult())
-      powerup_acquired.emit(type, 0)
-    "harvest_madness":
-      _start_timed_buff("harvest_madness", 8.0)
-      powerup_acquired.emit(type, 0)
     "field_clear":
       field_clear_requested.emit()
       powerup_acquired.emit(type, 0)
     "blackhole":
       blackhole_requested.emit()
       powerup_acquired.emit(type, 0)
+    "extra_time":
+      extra_time_requested.emit(5.0)
+      powerup_acquired.emit(type, 0)
+    "double_or_nothing", "double_or_dust":
+      _apply_double_or_nothing()
+    "growth_spurt", "monster_fury":
+      add_fury(get_fury_max() * 0.35 / get_fury_rate_mult())
+      powerup_acquired.emit("growth_spurt", 0)
+    "instant_level":
+      _force_level_up()
+      powerup_acquired.emit(type, 0)
+
+func _force_level_up() -> void:
+  var cap = get_session_level_cap()
+  if session_level < cap:
+    session_level += 1
+    level_up.emit(session_level)
+    fury_changed.emit(session_xp)
 
 func _start_timed_buff(type: String, duration: float) -> void:
   timed_buffs[type] = duration
   timed_buff_started.emit(type, duration)
 
-func _apply_double_or_dust() -> void:
+func _apply_double_or_nothing() -> void:
   if randf() < 0.5:
-    # Double!
-    var bonus = session_money
-    add_money(bonus)
-    powerup_acquired.emit("double_or_dust", 1)  # 1 = success
+    add_money(session_money)  # 2배
+    powerup_acquired.emit("double_or_nothing", 1)
   else:
-    # Dust! 세션 수입의 30%만 잃음
-    var lost = int(session_money * 0.3)
-    add_money(-lost)
-    powerup_acquired.emit("double_or_dust", 0)  # 0 = fail
+    add_money(-session_money)  # 전부 잃음
+    powerup_acquired.emit("double_or_nothing", 0)
 
 const BASE_KNOCKBACK: float = 120.0
 
@@ -1096,13 +1153,8 @@ func get_weapon_skill_requirement(weapon_level: int) -> int:
   return WEAPON_SKILL_REQUIREMENTS[weapon_level]
 
 func get_grass_regen_time(base_time: float) -> float:
-  var level = upgrade_levels.get("grass_regen", 0)
-  if level == 0:
-    return base_time
-  elif level == 1:
-    return 13.0
-  else:
-    return 4.0
+  # 비옥한 흙(regrow_speed): 재생 속도 +20%/스택 → 재생 시간 단축
+  return base_time / get_regrow_mult()
 
 # ── 틱 비용 테이블: [시작가, 틱당증가] (인덱스 = 코드 레벨) ──
 
@@ -1509,6 +1561,9 @@ func add_gem(count: int = 1) -> void:
   owned_gems += count
 
 func finalize_session() -> void:
+  # 이자: 세션 종료 시 보유 코인의 +8%/스택
+  if pu("interest") > 0:
+    add_money(int(money * 0.08 * pu("interest")))
   money += session_money
   session_money = 0
   money_changed.emit(money)
@@ -1517,13 +1572,12 @@ func finalize_session() -> void:
 
 func reset_session_data() -> void:
   session_money = 0
-  session_buff_attack_speed = 0
-  session_buff_attack_range = 0
-  session_buff_magnet_range = 0
-  session_buff_move_speed = 0
+  session_pu.clear()
   session_buff_critical_surge = false
   session_buff_critical_reaper = false
   session_buff_golden_luck = false
+  player_moving = false
+  session_kills = 0
   timed_buffs.clear()
   hit_penalty_active = false
   session_level = 1

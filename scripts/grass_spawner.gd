@@ -466,7 +466,7 @@ func attack_grass_in_area(center: Vector2, radius: float) -> Dictionary:
   var total_max_health = 0
   var total_xp = 0  # 세션 레벨 XP = 벤 풀 티어 가중치 합(type+1: 새싹1..초강5, 황금6)
   var attacked_positions: Array = []
-  var base_damage = WeaponManager.get_weapon_damage()
+  var base_damage = roundi(WeaponManager.get_weapon_damage() * GameManager.get_attack_power_mult())
   var is_crit = randf() < GameManager.get_crit_chance()
   var damage = base_damage
   if is_crit:
@@ -562,6 +562,8 @@ func attack_grass_in_area(center: Vector2, radius: float) -> Dictionary:
           coin_value = roundi(coin_value * GameManager.get_golden_reward_mult())
         spawn_coin(pos, coin_value)
 
+  if attacked_positions.size() > 0:
+    GameManager.register_kills(attacked_positions.size())
   return {"value": total_value, "hit": hit_count > 0, "xp": total_xp, "fury": total_max_health, "crit": is_crit and hit_count > 0}
 
 func spawn_coin(pos: Vector2, value: int) -> void:

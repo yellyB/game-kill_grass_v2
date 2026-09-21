@@ -77,7 +77,7 @@ func update_money_display() -> void:
   money_label.text = GameManager.format_number(displayed_money)
 
 
-const PERSISTENT_BUFFS = ["attack_speed", "attack_range", "magnet_range", "move_speed"]
+const PERSISTENT_BUFFS = ["pu_attack_speed", "pu_attack_range", "pu_magnet_range", "pu_move_speed"]
 
 func _on_powerup_acquired(type: String, level: int) -> void:
   if type in PERSISTENT_BUFFS:
@@ -422,12 +422,12 @@ func _show_powerup_notification(type: String, level: int) -> void:
 
   var text = data.get("name", type)
 
-  # 더블 오어 더스트: 결과 표시
-  if type == "double_or_dust":
+  # 더블 오어 낫싱: 결과 표시
+  if type == "double_or_nothing":
     if level == 1:
       text = "더블! 코인 x2"
     else:
-      text = "낫싱! 코인 -30%"
+      text = "낫싱! 코인 전부 잃음"
 
   var hbox = HBoxContainer.new()
   hbox.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -450,7 +450,7 @@ func _show_powerup_notification(type: String, level: int) -> void:
   var label = Label.new()
   label.text = text
   label.add_theme_font_size_override("font_size", 44)
-  if type == "double_or_dust" and level == 0:
+  if type == "double_or_nothing" and level == 0:
     label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
     label.add_theme_color_override("font_outline_color", Color(0.4, 0.0, 0.0))
   else:
