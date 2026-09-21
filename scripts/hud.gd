@@ -17,6 +17,8 @@ var perm_buff_icons: Array = []  # ordered list of icons
 func _ready() -> void:
   GameManager.session_money_changed.connect(_on_session_money_changed)
   GameManager.powerup_acquired.connect(_on_powerup_acquired)
+  GameManager.item_acquired.connect(_on_item_acquired)
+  GameManager.item_slot_full.connect(_on_item_slot_full)
   GameManager.timed_buff_started.connect(_on_timed_buff_started)
   GameManager.timed_buff_ended.connect(_on_timed_buff_ended)
 
@@ -411,7 +413,14 @@ func _setup_notif_container() -> void:
   _notif_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
   padded_area.add_child(_notif_container)
 
-func _show_powerup_notification(type: String, level: int) -> void:
+# 아이템 획득 시: 어떤 아이템인지 이름+아이콘 알림 (슬롯 저장됨)
+func _on_item_acquired(type: String) -> void:
+  _show_powerup_notification(type, 0, "획득! ")
+
+func _on_item_slot_full(type: String) -> void:
+  _show_powerup_notification(type, 0, "슬롯 가득! ")
+
+func _show_powerup_notification(type: String, level: int, prefix: String = "") -> void:
   if not _notif_container:
     _setup_notif_container()
 
@@ -420,7 +429,7 @@ func _show_powerup_notification(type: String, level: int) -> void:
   if data.is_empty():
     return
 
-  var text = data.get("name", type)
+  var text = prefix + data.get("name", type)
 
   # 더블 오어 낫싱: 결과 표시
   if type == "double_or_nothing":

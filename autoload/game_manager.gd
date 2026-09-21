@@ -818,6 +818,8 @@ func get_item_slots() -> int:
 # 컨테이너 파괴/상점으로 획득 → 슬롯 저장 → 스페이스로 발동(apply_powerup 재사용).
 var held_items: Array = []
 signal items_changed(items: Array)
+signal item_acquired(type: String)       # 획득 시 이름 알림용
+signal item_slot_full(type: String)      # 슬롯 가득 차 획득 실패
 
 # 컨테이너에서 나오는 즉발 아이템 풀 (구현된 것만)
 const ITEM_DROP_POOL: Array = [
@@ -832,9 +834,11 @@ func random_item_type() -> String:
 
 func add_item(type: String) -> bool:
   if held_items.size() >= get_item_slots():
-    return false  # 슬롯 가득 (교체 UI는 후속)
+    item_slot_full.emit(type)  # 슬롯 가득 → 획득 실패 알림
+    return false
   held_items.append(type)
   items_changed.emit(held_items)
+  item_acquired.emit(type)     # 획득한 아이템 이름 알림
   return true
 
 func use_next_item() -> void:
