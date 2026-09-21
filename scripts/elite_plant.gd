@@ -30,33 +30,35 @@ func _ready() -> void:
 	var tw = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 	tw.tween_property(visual, "scale", _base_scale, 0.25)
 
-func _build_visual() -> void:
-	# 어두운 줄기 + 가시 잎(정예 표식: 붉은기 도는 위협적 식물)
-	var stem = Polygon2D.new()
-	stem.color = Color(0.25, 0.35, 0.2)
-	stem.polygon = PackedVector2Array([
-		Vector2(-5, 30), Vector2(5, 30), Vector2(3, -6), Vector2(-3, -6)
-	])
-	visual.add_child(stem)
-	var leaf_color = Color(0.7, 0.25, 0.3)
-	for i in 5:
-		var a = -PI * 0.5 + (i - 2) * 0.5
-		var leaf = Polygon2D.new()
-		leaf.color = leaf_color
-		var tip = Vector2(cos(a), sin(a)) * 34.0
-		var perp = Vector2(-sin(a), cos(a)) * 9.0
-		leaf.polygon = PackedVector2Array([Vector2(0, -4), tip + perp, tip, tip - perp])
-		visual.add_child(leaf)
-	# 중앙 열매(밝은 붉은색)
-	var core = Polygon2D.new()
-	core.color = Color(0.95, 0.35, 0.3)
+func _ellipse(cx: float, cy: float, rx: float, ry: float, segs: int = 16) -> PackedVector2Array:
 	var pts: PackedVector2Array = []
-	for j in 10:
-		var ang = TAU / 10.0 * j
-		pts.append(Vector2(cos(ang), sin(ang)) * 10.0)
-	core.polygon = pts
-	core.position = Vector2(0, -4)
-	visual.add_child(core)
+	for i in segs:
+		var a = TAU / segs * i
+		pts.append(Vector2(cx + cos(a) * rx, cy + sin(a) * ry))
+	return pts
+
+func _build_visual() -> void:
+	# 씨앗 꼬투리(씨방): 짧은 줄기 + 통통한 꼬투리 + 씨앗 알갱이
+	var stem = Polygon2D.new()
+	stem.color = Color(0.3, 0.5, 0.28)
+	stem.polygon = PackedVector2Array([Vector2(-4, 32), Vector2(4, 32), Vector2(2, 6), Vector2(-2, 6)])
+	visual.add_child(stem)
+	# 꼬투리 본체 (세로 타원)
+	var pod = Polygon2D.new()
+	pod.color = Color(0.42, 0.62, 0.3)
+	pod.polygon = _ellipse(0, -12, 16, 26, 20)
+	visual.add_child(pod)
+	# 꼬투리 밝은 면(왼쪽 위 반사)
+	var pod_hl = Polygon2D.new()
+	pod_hl.color = Color(0.56, 0.76, 0.4)
+	pod_hl.polygon = _ellipse(-3, -15, 8, 17, 16)
+	visual.add_child(pod_hl)
+	# 씨앗 알갱이 3개(세로로 담김)
+	for i in 3:
+		var seed = Polygon2D.new()
+		seed.color = Color(0.5, 0.38, 0.2)
+		seed.polygon = _ellipse(0, -24 + i * 10, 4.5, 5.5, 10)
+		visual.add_child(seed)
 	# HP 바 (식물 위) — 풀처럼 피격 시에만 표시
 	_hp_bar_root = Node2D.new()
 	_hp_bar_root.visible = false
