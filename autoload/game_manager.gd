@@ -658,8 +658,37 @@ func clear_current_world() -> void:
   # 모디스트 코인 보너스
   session_boss_reward = int(get_goomok_hp() * 0.3)
   add_money(session_boss_reward)
+  # 게임 레벨 XP: 거목 처치 = K×√(거목HP)
+  add_game_xp(Progression.goomok_xp(w, strength))
   SaveManager.save_game()
   goomok_cleared.emit()
+
+# ── 게임 레벨 (계정 메타, 영구) ──
+# XP = 거목 처치(√HP) + 세션 완료(고정). 최대 15. 아이템 슬롯 개방 게이트.
+var game_xp: float = 0.0
+signal game_level_changed(level: int)
+
+func get_game_level() -> int:
+  return Progression.glevel_from_xp(game_xp, Balance.GLEVEL_TOTAL_XP)
+
+func add_game_xp(amount: float) -> void:
+  if amount <= 0.0:
+    return
+  var before = get_game_level()
+  game_xp += amount
+  var after = get_game_level()
+  if after != before:
+    game_level_changed.emit(after)
+
+# 아이템 슬롯 수 (게임 레벨 Lv3/7/12로 1→2→3 개방)
+func get_item_slots() -> int:
+  var lv = get_game_level()
+  var slots = 1
+  if lv >= 3:
+    slots += 1
+  if lv >= 7:
+    slots += 1
+  return mini(slots, 3)
 
 # ── Skill total progress helper ──
 # Combines level and sub_level into a single progress value
@@ -1373,6 +1402,7 @@ func get_save_data() -> Dictionary:
     "world_strength_levels": world_strength_levels.duplicate(),
     "collected_gem_levels": collected_gem_levels.duplicate(),
     "has_ever_transcended": has_ever_transcended,
+    "game_xp": game_xp,
     "bgm_enabled": bgm_enabled,
     "sfx_enabled": sfx_enabled,
     "vibration_enabled": vibration_enabled,
@@ -1415,6 +1445,7 @@ func load_save_data(data: Dictionary) -> void:
   for k in saved_strength:
     world_strength_levels[int(k)] = int(saved_strength[k])
   has_ever_transcended = data.get("has_ever_transcended", false)
+  game_xp = float(data.get("game_xp", 0.0))
   # 기존 세이브 호환: 초월 레벨이 있으면 이미 초월한 것
   if not has_ever_transcended and not saved_strength.is_empty():
     has_ever_transcended = true
@@ -1453,6 +1484,8 @@ func finalize_session() -> void:
   money += session_money
   session_money = 0
   money_changed.emit(money)
+  # 세션 완료 게임 레벨 XP
+  add_game_xp(Balance.GLEVEL_SESSION_XP)
 
 func reset_session_data() -> void:
   session_money = 0
