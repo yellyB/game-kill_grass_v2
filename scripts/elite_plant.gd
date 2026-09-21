@@ -14,6 +14,9 @@ var _hp_fill: Polygon2D = null
 var _hp_bar_root: Node2D = null
 var _hp_bar_timer: float = 0.0
 const _HP_BAR_SHOW_TIME: float = 1.5  # 풀과 동일: 마지막 피격 후 유지 시간
+# 흔들림(풀 셰이더 값과 유사): 인스턴스별 위상으로 비동기 살랑
+var _sway_t: float = 0.0
+var _sway_phase: float = 0.0
 const _HP_BAR_W: float = 56.0
 const _HP_BAR_Y: float = -52.0
 
@@ -29,6 +32,7 @@ func _ready() -> void:
 	visual.scale = Vector2.ZERO
 	var tw = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 	tw.tween_property(visual, "scale", _base_scale, 0.25)
+	_sway_phase = randf() * TAU
 
 func _ellipse(cx: float, cy: float, rx: float, ry: float, segs: int = 16) -> PackedVector2Array:
 	var pts: PackedVector2Array = []
@@ -78,6 +82,11 @@ func _build_visual() -> void:
 	_hp_bar_root.add_child(_hp_fill)
 
 func _process(delta: float) -> void:
+	# 풀처럼 살랑 흔들림 (skew, 이중 sine + 위상). 정예 수가 적어 CPU 부담 없음.
+	_sway_t += delta
+	var s = sin(_sway_t * 5.0 + _sway_phase) * 0.12
+	s += sin(_sway_t * 8.5 + _sway_phase * 1.3) * 0.06
+	visual.skew = s * 0.7
 	if _hp_bar_timer > 0.0:
 		_hp_bar_timer -= delta
 		if _hp_bar_timer <= 0.0 and _hp_bar_root:
