@@ -22,8 +22,8 @@ func _ready() -> void:
 	player = get_tree().get_first_node_in_group("player")
 	GameManager.goomok_ready.connect(_on_goomok_ready)
 	GameManager.uproot_requested.connect(_on_uproot)
-	# 월드별 정예 밀도 = 씨앗 N에 비례(더 위험한 월드 = 정예 더 많음)
-	target_elites = clampi(2 + GameManager.selected_world, 2, 6)
+	# 월드별 정예 밀도 = 씨앗 N에 비례 + 정예 등장 확률 스킬
+	target_elites = clampi(2 + GameManager.selected_world + GameManager.get_upgrade_level("elite_chance"), 2, 12)
 
 func _process(delta: float) -> void:
 	if _goomok != null:

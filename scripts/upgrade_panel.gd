@@ -54,6 +54,7 @@ const SKILL_ICONS = {
   "grass_density": preload("res://resources/images/skill/grass_density.png"),
   "grass_quality": preload("res://resources/images/skill/grass_quality.png"),
   "chest_chance": preload("res://resources/images/skill/chest_chance.png"),
+  "elite_chance": preload("res://resources/images/skill/attack_power.png"),  # 임시: 공격력 아이콘 재사용
   "fury_rate": preload("res://resources/images/skill/fury_rate.png"),
   "golden_chance": preload("res://resources/images/skill/golden_chance.png"),
   "golden_reward": preload("res://resources/images/skill/golden_reward.png"),

@@ -126,6 +126,8 @@ const SKILL_DEFS: Array = [
    "description": "거목·정예 식물에게 주는 피해가 증가합니다.\n배율: 100% → 450% (틱당 +10%)\n단계 5 | 최대 Lv.7"},
   {"type": "fury_rate", "name": "성장 속도", "short_name": "성장", "sub_max": 4, "max_level": 4,
    "description": "세션 레벨업 게이지가 더 빨리 찹니다.\n배율: 100% → 340% (틱당 +15%)\n단계 4 | 최대 Lv.4"},
+  {"type": "elite_chance", "name": "정예 식물", "short_name": "정예", "sub_max": 5, "max_level": 5,
+   "description": "정예 식물이 더 많이 등장합니다.\n씨앗 공급↑ → 거목 더 빨리 소환\n단계 5 | 최대 Lv.5"},
   {"type": "golden_chance", "name": "황금풀 확률", "short_name": "황금", "sub_max": 2, "max_level": 5,
    "description": "풀이 황금풀로 자라날 확률이 높아집니다.\n확률: 0% → 1.0% (틱당 +0.1%)\n단계 2 | 최대 Lv.5"},
   {"type": "golden_reward", "name": "황금풀 보상", "short_name": "황보", "sub_max": 5, "max_level": 5,
@@ -149,7 +151,7 @@ const SKILL_GROUPS: Array = [
   },
   {
     "name": "탐험",
-    "skills": ["move_speed", "session_time", "chest_chance", "fury_rate"],
+    "skills": ["move_speed", "session_time", "chest_chance", "fury_rate", "elite_chance"],
     "columns": 2,
   },
 ]
@@ -1148,6 +1150,8 @@ const SKILL_PREREQS = {
   "chest_chance:1": [{"type": "move_speed", "level": 1}],
   # 탐험: row2 ← row1 (OR)
   "fury_rate:1": [{"type": "session_time_or_chest_chance", "level": 1}],
+  # 탐험: 정예 식물 ← 아이템 상자(컨테이너 확률과 대칭)
+  "elite_chance:1": [{"type": "chest_chance", "level": 1}],
 }
 
 # Required total skill levels to unlock (해금 게이트)
@@ -1401,6 +1405,14 @@ const CHEST_CHANCE_TICK_COSTS: Array = [
   [24000, 2400],    # Lv.4: 24000,26400,28800,31200,33600 = 144,000
   [250000, 25000],  # Lv.5: 250000,275000,300000,325000,350000 = 1,500,000
 ]
+# row2: 정예 식물 등장 확률 (5t×5L) — 컨테이너 확률과 대칭
+const ELITE_CHANCE_TICK_COSTS: Array = [
+  [20, 2],
+  [200, 20],
+  [2200, 220],
+  [24000, 2400],
+  [250000, 25000],
+]
 # row2: 분노 속도 (4t×4L)
 const FURY_RATE_TICK_COSTS: Array = [
   [1000, 100],      # Lv.1: 1000,1100,1200,1300 = 4,600
@@ -1498,6 +1510,7 @@ func _get_raw_upgrade_cost(current_level: int, upgrade_type: String = "") -> int
     "move_speed": MOVE_SPEED_TICK_COSTS,
     "session_time": SESSION_TIME_TICK_COSTS,
     "chest_chance": CHEST_CHANCE_TICK_COSTS,
+    "elite_chance": ELITE_CHANCE_TICK_COSTS,
   }
   tier_costs = SKILL_TICK_COSTS.get(upgrade_type, ATTACK_POWER_TICK_COSTS)
 
