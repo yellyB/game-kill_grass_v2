@@ -22,7 +22,7 @@ const POWERUP_DATA = [
   {"type": "pu_magnet_range", "name": "메가 마그넷", "desc": "수집 범위 +25%", "color": Color(0.2, 1.0, 0.8), "image": "메가마그넷.png", "stackable": true, "item": false, "weight": 20, "enabled": true},
   {"type": "regrow_speed", "name": "비옥한 흙", "desc": "풀 재생 속도 +20%", "color": Color(0.4, 0.8, 0.3), "image": "", "stackable": true, "item": false, "weight": 20, "enabled": true},
   {"type": "coin_leech", "name": "흡혈 수확", "desc": "벤 풀 코인 +8%", "color": Color(0.8, 0.7, 0.2), "image": "", "stackable": true, "item": false, "weight": 20, "enabled": true},
-  {"type": "combo_harvest", "name": "콤보 수확", "desc": "연속 처치 10마다 코인 +5% (최대 +50%)", "color": Color(1.0, 0.7, 0.3), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": false},
+  {"type": "combo_harvest", "name": "콤보 수확", "desc": "연속 처치 10마다 코인 +5% (최대 +50%)", "color": Color(1.0, 0.7, 0.3), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": true},
   {"type": "interest", "name": "이자", "desc": "세션 종료 시 보유 코인 +8%", "color": Color(0.9, 0.8, 0.3), "image": "", "stackable": true, "item": false, "weight": 10, "enabled": true},
   {"type": "overkill", "name": "오버킬 환원", "desc": "처치 초과 데미지만큼 코인 보너스", "color": Color(0.9, 0.5, 0.2), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": false},
   # ── 황금풀 (파워업) ──
@@ -35,18 +35,18 @@ const POWERUP_DATA = [
   {"type": "stun_resist", "name": "굳은 심지", "desc": "거목 스턴 시간 -25% (최대 -75%)", "color": Color(0.6, 0.6, 0.7), "image": "", "stackable": true, "item": false, "weight": 20, "max_stacks": 3, "enabled": true},
   {"type": "thorns", "name": "가시 반격", "desc": "스턴될 때 거목 최대 체력 2% 반사", "color": Color(0.5, 0.7, 0.4), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": false},
   # ── 시간 (파워업) ──
-  {"type": "finale", "name": "막판 스퍼트", "desc": "마지막 10초간 전 스탯 +50%", "color": Color(0.4, 1.0, 0.4), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": false},
+  {"type": "finale", "name": "막판 스퍼트", "desc": "마지막 10초간 전 스탯 +50%", "color": Color(0.4, 1.0, 0.4), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": true},
   # ── 도박 (파워업) ──
-  {"type": "cursed_scythe", "name": "저주받은 낫", "desc": "코인 +50%, 경험치 -40%", "color": Color(0.6, 0.2, 0.6), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": false},
+  {"type": "cursed_scythe", "name": "저주받은 낫", "desc": "코인 +50%, 경험치 -40%", "color": Color(0.6, 0.2, 0.6), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": true},
   # ── 성장 (파워업) ──
   {"type": "level_burst", "name": "레벨업 충격", "desc": "레벨업 시 주변 풀 즉시 처치", "color": Color(0.7, 0.9, 1.0), "image": "", "stackable": false, "item": false, "weight": 10, "enabled": false},
   {"type": "seed_blessing", "name": "씨앗 축복", "desc": "씨앗 획득 시 8초간 전 스탯 +15%", "color": Color(0.5, 0.9, 0.5), "image": "", "stackable": false, "item": false, "weight": 10, "enabled": true},
   {"type": "xp_gain", "name": "떡잎 부적", "desc": "레벨업 게이지 획득량 +20%", "color": Color(0.6, 0.9, 0.6), "image": "", "stackable": true, "item": false, "weight": 20, "enabled": true},
   {"type": "reroll", "name": "리롤 토큰", "desc": "파워업 3택 다시 뽑기 +1", "color": Color(0.5, 0.7, 1.0), "image": "", "stackable": true, "item": false, "weight": 10, "enabled": false},
-  {"type": "extra_choice", "name": "안목", "desc": "파워업 선택지 3→4개", "color": Color(0.6, 0.8, 1.0), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": false},
-  {"type": "luck", "name": "행운의 편자", "desc": "레어 이상 등장 확률 증가", "color": Color(0.9, 0.9, 0.4), "image": "", "stackable": true, "item": false, "weight": 4, "enabled": false},
+  {"type": "extra_choice", "name": "안목", "desc": "파워업 선택지 3→4개", "color": Color(0.6, 0.8, 1.0), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": true},
+  {"type": "luck", "name": "행운의 편자", "desc": "레어 이상 등장 확률 증가", "color": Color(0.9, 0.9, 0.4), "image": "", "stackable": true, "item": false, "weight": 4, "enabled": true},
   {"type": "snowball", "name": "눈덩이", "desc": "풀 100개마다 공격력 +2% (세션 내)", "color": Color(0.8, 0.9, 1.0), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": true},
-  {"type": "compound", "name": "복리 성장", "desc": "레벨업마다 전 스탯 소폭 영구 증가", "color": Color(0.9, 0.7, 1.0), "image": "", "stackable": false, "item": false, "weight": 1, "enabled": false},
+  {"type": "compound", "name": "복리 성장", "desc": "레벨업마다 전 스탯 소폭 영구 증가", "color": Color(0.9, 0.7, 1.0), "image": "", "stackable": false, "item": false, "weight": 1, "enabled": true},
   # ── 아이템 (즉발, 컨테이너/상점) ──
   {"type": "gold_rush", "name": "골드 러시", "desc": "10초간 코인 가치 2배", "color": Color(1.0, 0.85, 0.0), "image": "골드러시.png", "stackable": false, "item": true, "weight": 10, "enabled": true},
   {"type": "blackhole", "name": "블랙홀", "desc": "드롭 코인 즉시 흡수", "color": Color(0.2, 0.0, 0.4), "image": "블랙홀.png", "stackable": false, "item": true, "weight": 10, "enabled": true},
@@ -106,25 +106,35 @@ func _pick_random_powerups(count: int) -> Array:
         continue
     pool.append(data)
 
+  # 행운의 편자: 레어 이상(가중치 낮은 항목) 등장 확률 증가
+  var luck = GameManager.pu("luck")
   var result: Array = []
   for i in count:
     if pool.is_empty():
       break
-    var total_weight: int = 0
+    var total_weight: float = 0.0
     for item in pool:
-      total_weight += item.weight
-    var roll = randi() % total_weight
-    var cumulative: int = 0
+      total_weight += _weighted(item, luck)
+    var roll = randf() * total_weight
+    var cumulative: float = 0.0
     for j in pool.size():
-      cumulative += pool[j].weight
+      cumulative += _weighted(pool[j], luck)
       if roll < cumulative:
         result.append(pool[j])
         pool.remove_at(j)
         break
   return result
 
+func _weighted(item: Dictionary, luck: int) -> float:
+  var w = float(item.weight)
+  if luck > 0 and item.weight <= 4:  # 레어(4)·에픽(1) 부스트
+    w *= 1.0 + 0.5 * luck
+  return w
+
 func _build_ui() -> void:
-  var selected = _pick_random_powerups(3)
+  # 안목: 선택지 3→4개
+  var count = 4 if GameManager.pu("extra_choice") > 0 else 3
+  var selected = _pick_random_powerups(count)
 
   # Full-screen root
   var root = Control.new()

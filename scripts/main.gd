@@ -91,6 +91,8 @@ func _process(delta: float) -> void:
     return
 
   session_time_remaining -= delta
+  # 막판 스퍼트: 제한시간 마지막 10초
+  GameManager.finale_active = session_time_remaining <= 10.0
   if session_time_remaining <= 0:
     session_time_remaining = 0
     end_session()

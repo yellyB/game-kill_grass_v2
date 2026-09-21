@@ -173,12 +173,20 @@ var session_kills: int = 0           # snowball 조건
 func pu(t: String) -> int:
   return int(session_pu.get(t, 0))
 
-# 액티브(하베스트/올인/씨앗축복) 전 스탯 배율
+# 성장 상태 (복리/막판/콤보)
+var compound_bonus: float = 0.0   # 복리 성장: 레벨업마다 누적
+var finale_active: bool = false   # 막판 스퍼트: 제한시간 마지막 10초
+var combo_count: int = 0          # 콤보 수확: 연속 처치 수
+var combo_timer: float = 0.0
+
+# 액티브(하베스트/올인/씨앗축복/복리/막판) 전 스탯 배율
 func get_global_active_mult() -> float:
   var m := 1.0
   if timed_buffs.has("harvest_madness"): m *= 1.8
   if timed_buffs.has("all_in"): m *= 1.8
   if timed_buffs.has("seed_blessing"): m *= 1.15
+  if finale_active and pu("finale") > 0: m *= 1.5
+  m *= (1.0 + compound_bonus)
   return m
 
 func get_attack_power_mult() -> float:
@@ -190,6 +198,8 @@ func get_attack_power_mult() -> float:
 
 func get_coin_value_mult() -> float:
   var m := 1.0 + pu("coin_value") * 0.12 + pu("coin_leech") * 0.08
+  if pu("cursed_scythe") > 0: m += 0.5
+  if pu("combo_harvest") > 0: m += minf(0.5, floori(combo_count / 10.0) * 0.05)
   if timed_buffs.has("gold_rush"): m *= 2.0
   return m
 
@@ -197,7 +207,9 @@ func get_timber_mult() -> float:
   return 1.0 + pu("timber") * 0.30
 
 func get_xp_gain_mult() -> float:
-  return 1.0 + pu("xp_gain") * 0.20
+  var m := 1.0 + pu("xp_gain") * 0.20
+  if pu("cursed_scythe") > 0: m *= 0.6
+  return m
 
 func get_stun_duration_mult() -> float:
   return maxf(0.25, 1.0 - pu("stun_resist") * 0.25)
@@ -207,6 +219,8 @@ func get_regrow_mult() -> float:
 
 func register_kills(n: int) -> void:
   session_kills += n
+  combo_count += n
+  combo_timer = 1.5  # 콤보 유지 시간(미수확 시 리셋)
 
 # Timed buffs: { "gold_rush": remaining_seconds, ... }
 var timed_buffs: Dictionary = {}
@@ -505,6 +519,11 @@ func _process(delta: float) -> void:
   for buff_type in expired:
     timed_buffs.erase(buff_type)
     timed_buff_ended.emit(buff_type)
+  # 콤보 수확: 미수확 시 콤보 리셋
+  if combo_count > 0:
+    combo_timer -= delta
+    if combo_timer <= 0.0:
+      combo_count = 0
 
 func _init_grass_data() -> void:
   # 0: 새싹 - 체력 낮음, 보상 적음
@@ -625,6 +644,7 @@ func add_fury(amount: float) -> void:
   while session_xp >= need and session_level < cap:
     session_xp -= need
     session_level += 1
+    if pu("compound") > 0: compound_bonus += 0.03  # 복리 성장
     level_up.emit(session_level)
     need = get_fury_max()
   if session_level >= cap:
@@ -920,7 +940,7 @@ const STACK_PU := [
   "pu_golden_chance", "interest",
 ]
 # 비누적 지속 파워업(보유 여부만)
-const FLAG_PU := ["momentum", "snowball", "seed_blessing"]
+const FLAG_PU := ["momentum", "snowball", "seed_blessing", "cursed_scythe", "compound", "finale", "combo_harvest"]
 
 func apply_powerup(type: String) -> void:
   if type in STACK_PU:
@@ -980,6 +1000,7 @@ func _force_level_up() -> void:
   var cap = get_session_level_cap()
   if session_level < cap:
     session_level += 1
+    if pu("compound") > 0: compound_bonus += 0.03
     level_up.emit(session_level)
     fury_changed.emit(session_xp)
 
@@ -1578,6 +1599,10 @@ func reset_session_data() -> void:
   session_buff_golden_luck = false
   player_moving = false
   session_kills = 0
+  compound_bonus = 0.0
+  finale_active = false
+  combo_count = 0
+  combo_timer = 0.0
   timed_buffs.clear()
   hit_penalty_active = false
   session_level = 1
