@@ -960,6 +960,20 @@ func _open_settings() -> void:
   vib_row.add_child(_vibration_toggle_btn.get_parent())
   vbox.add_child(vib_row)
 
+  # 전체화면 토글 (PC)
+  var fs_row = HBoxContainer.new()
+  fs_row.add_theme_constant_override("separation", 20)
+  var fs_label = Label.new()
+  fs_label.text = "전체화면"
+  fs_label.add_theme_font_size_override("font_size", 36)
+  fs_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+  fs_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+  fs_row.add_child(fs_label)
+  var is_fs = DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
+  var fs_toggle = _create_toggle(is_fs, _on_fullscreen_toggled)
+  fs_row.add_child(fs_toggle.get_parent())
+  vbox.add_child(fs_row)
+
   var gap_danger = Control.new()
   gap_danger.custom_minimum_size = Vector2(0, 20)
   vbox.add_child(gap_danger)
@@ -1081,6 +1095,12 @@ func _on_vibration_toggled(enabled: bool) -> void:
   GameManager.vibration_enabled = enabled
   GameManager.play_button_click()
   SaveManager.save_game()
+
+func _on_fullscreen_toggled(enabled: bool) -> void:
+  GameManager.play_button_click()
+  DisplayServer.window_set_mode(
+    DisplayServer.WINDOW_MODE_FULLSCREEN if enabled else DisplayServer.WINDOW_MODE_WINDOWED
+  )
 
 func _on_settings_reset_pressed() -> void:
   GameManager.play_button_click()
