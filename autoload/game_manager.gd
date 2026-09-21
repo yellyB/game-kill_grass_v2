@@ -633,12 +633,24 @@ func _init_grass_data() -> void:
   g5.color = Color(1.0, 0.85, 0.1)
   g5.cut_color = Color(0.7, 0.6, 0.1)
 
+  # 6: 덤불 - 고체력 강한 풀 등급(등급 스킬 4↑에서 낮은 확률 등장)
+  var g6 = GrassData.new()
+  g6.grass_name = "덤불"
+  g6.max_health = 300
+  g6.regen_time = 28.0
+  g6.min_drop_value = 250
+  g6.max_drop_value = 250
+  g6.drop_chance = GRASS_DROP_CHANCE
+  g6.color = Color(0.12, 0.42, 0.18)
+  g6.cut_color = Color(0.2, 0.3, 0.15)
+
   grass_data_list.append(g0)
   grass_data_list.append(g1)
   grass_data_list.append(g2)
   grass_data_list.append(g3)
   grass_data_list.append(g4)
   grass_data_list.append(g5)
+  grass_data_list.append(g6)
 
 # 풀 등급 이름 (UI 표시용)
 const GRASS_TYPE_NAMES: Array = ["새싹", "잔디", "여린풀", "강한풀", "초강풀"]
@@ -646,6 +658,9 @@ const GRASS_TYPE_NAMES: Array = ["새싹", "잔디", "여린풀", "강한풀", "
 func get_random_grass_data() -> GrassData:
   if randf() < get_golden_grass_chance():
     return grass_data_list[5]  # 황금풀
+  # 덤불(고체력 등급): 등급 스킬 4레벨↑에서 낮은 확률 등장
+  if upgrade_levels.get("grass_quality", 0) >= 4 and randf() < 0.05:
+    return grass_data_list[6]
 
   # 레벨별 풀 등급 전환 (8레벨, 2레벨당 1등급 전환)
   # 짝수 코드레벨(유저 홀수): 현재 100% → 현재 50% + 다음 50%
