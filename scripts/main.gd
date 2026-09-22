@@ -207,6 +207,9 @@ func animate_coins_disappear() -> void:
   await get_tree().create_timer(total_duration + 0.3).timeout
 
 func show_session_end_overlay(earnings: int) -> void:
+  # 콤보 누적점수 → 열매 정산 (시간초과·거목클리어 양쪽 경로가 여기로 모임, 1회)
+  GameManager.settle_session_combo()
+
   # Play fanfare
   if GameManager.sfx_enabled:
     var sfx = AudioStreamPlayer.new()

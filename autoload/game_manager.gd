@@ -4,6 +4,7 @@ extends Node
 const Progression = preload("res://core/progression.gd")
 const Balance = preload("res://core/balance_data.gd")
 const Economy = preload("res://core/economy.gd")
+const Combo = preload("res://core/combo.gd")
 
 # UI constants
 const SCREEN_PADDING_H: float = 40.0
@@ -178,8 +179,11 @@ func pu(t: String) -> int:
 # 성장 상태 (복리/막판/콤보)
 var compound_bonus: float = 0.0   # 복리 성장: 레벨업마다 누적
 var finale_active: bool = false   # 막판 스퍼트: 제한시간 마지막 10초
-var combo_count: int = 0          # 콤보 수확: 연속 처치 수
-var combo_timer: float = 0.0
+var combo_count: int = 0          # 콤보: 연속 처치 수(풀+정예, 거목 제외)
+var combo_timer: float = 0.0      # 콤보 유지 잔여 시간(0 되면 리셋)
+var combo_score: float = 0.0      # 세션 누적 콤보 점수 → 세션끝 열매 정산
+var session_combo_tokens: int = 0 # 이번 세션 콤보로 정산된 열매(결과 화면 표시용)
+signal combo_changed(count: int, mult: float)  # HUD 콤보 표시용
 
 # 액티브(하베스트/올인/씨앗축복/복리/막판) 전 스탯 배율
 func get_global_active_mult() -> float:
@@ -220,10 +224,28 @@ func get_stun_duration_mult() -> float:
 func get_regrow_mult() -> float:
   return 1.0 + pu("regrow_speed") * 0.20
 
+# 처치 등록(풀=grass_spawner, 정예=elite_plant). 거목은 호출하지 않음.
 func register_kills(n: int) -> void:
+  if n <= 0:
+    return
   session_kills += n
-  combo_count += n
-  combo_timer = 1.5  # 콤보 유지 시간(미수확 시 리셋)
+  # 처치마다 콤보를 올리며 그 시점 배율만큼 누적점수 가산(누적 수렴형)
+  for i in range(n):
+    combo_count += 1
+    combo_score += Combo.score_gain(combo_count)
+  combo_timer = get_combo_window()  # 콤보 유지 시간(미처치 시 리셋)
+  combo_changed.emit(combo_count, Combo.multiplier(combo_count))
+
+# 콤보 유지 창(초). 기본값 + "콤보 지속" 스킬 연장(P1-2에서 스킬 반영).
+func get_combo_window() -> float:
+  return Balance.COMBO_WINDOW
+
+# 세션 종료 시 콤보 누적점수를 열매로 정산(1회). 결과 화면 표시값 반환.
+func settle_session_combo() -> int:
+  session_combo_tokens = Combo.tokens_from_score(combo_score)
+  if session_combo_tokens > 0:
+    add_token(session_combo_tokens)
+  return session_combo_tokens
 
 # ── 룬(키스톤): 세션당 1개 장착, 게임 레벨로 개방 ──
 var active_rune: String = ""
@@ -562,11 +584,12 @@ func _process(delta: float) -> void:
   for buff_type in expired:
     timed_buffs.erase(buff_type)
     timed_buff_ended.emit(buff_type)
-  # 콤보 수확: 미수확 시 콤보 리셋
+  # 콤보: 유지 창 안에 다음 처치 없으면 콤보 리셋(누적점수는 유지, 세션끝 정산)
   if combo_count > 0:
     combo_timer -= delta
     if combo_timer <= 0.0:
       combo_count = 0
+      combo_changed.emit(0, 1.0)
 
 func _init_grass_data() -> void:
   # 0: 새싹 - 체력 낮음, 보상 적음
@@ -1740,6 +1763,8 @@ func reset_session_data() -> void:
   finale_active = false
   combo_count = 0
   combo_timer = 0.0
+  combo_score = 0.0
+  session_combo_tokens = 0
   timed_buffs.clear()
   hit_penalty_active = false
   session_level = 1

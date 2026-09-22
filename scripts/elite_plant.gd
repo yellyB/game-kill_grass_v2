@@ -136,6 +136,7 @@ func _die() -> void:
 	if _dead:
 		return
 	_dead = true
+	GameManager.register_kills(1)  # 정예 처치도 콤보에 포함(거목 제외)
 	died.emit(self)
 	# 씨앗 드롭 → 플레이어에게 비행
 	var player = get_tree().get_first_node_in_group("player")
