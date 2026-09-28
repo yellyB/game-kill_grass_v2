@@ -162,7 +162,7 @@ func _on_play_pressed() -> void:
 func _start_game() -> void:
   if _menu_bgm:
     _menu_bgm.stop()
-  get_tree().change_scene_to_file("res://scenes/core/main.tscn")
+  UIRouter.goto("game")
 
 func _notification(what: int) -> void:
   if what == NOTIFICATION_WM_GO_BACK_REQUEST:

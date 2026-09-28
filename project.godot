@@ -18,7 +18,7 @@ config/name="풀죽이기"
 config/name_localized={
 "en": "Excuse Me, Mowing Through"
 }
-run/main_scene="res://scenes/ui/main_menu.tscn"
+run/main_scene="res://scenes/boot.tscn"
 config/quit_on_go_back=false
 config/features=PackedStringArray("4.6")
 
@@ -30,6 +30,7 @@ WeaponManager="*res://autoload/weapon_manager.gd"
 ActiveManager="*res://autoload/active_manager.gd"
 SaveManager="*res://autoload/save_manager.gd"
 SessionManager="*res://autoload/session_manager.gd"
+UIRouter="*res://autoload/ui_router.gd"
 
 [display]
 

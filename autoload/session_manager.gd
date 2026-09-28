@@ -89,7 +89,7 @@ func end_session(save: bool = true) -> void:
 
 func quit_to_menu() -> void:
   end_session(false)
-  get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+  UIRouter.goto("main_menu")
 
 func quit_game() -> void:
   end_session()

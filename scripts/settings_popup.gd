@@ -55,7 +55,7 @@ func _confirm_reset() -> void:
 	add_child(c)
 	c.confirmed.connect(func():
 		SaveManager.reset_all_data()
-		get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn"))
+		UIRouter.goto("main_menu"))
 	c.popup_centered()
 
 func _close() -> void:
