@@ -19,6 +19,7 @@ func _ready() -> void:
 	player = get_tree().get_first_node_in_group("player")
 	GameManager.goomok_ready.connect(_on_goomok_ready)
 	GameManager.uproot_requested.connect(_on_uproot)
+	ActiveManager.active_fired.connect(_on_active_fired)
 	# 월드별 정예 밀도 = 씨앗 N에 비례 + 정예 등장 확률 스킬
 	target_elites = clampi(2 + GameManager.selected_world + GameManager.get_upgrade_level("elite_chance"), 2, 12)
 
@@ -45,6 +46,17 @@ func _spawn_elite() -> void:
 	var r = randf_range(SPAWN_MIN_R, SPAWN_MAX_R)
 	e.global_position = player.global_position + Vector2(cos(ang), sin(ang)) * r
 	_elites.append(e)
+
+# 액티브 메테오: 거목·정예에도 광역 피해
+func _on_active_fired(id: String) -> void:
+	if id != "meteor":
+		return
+	var dmg = int(ActiveManager.effect_value("meteor"))
+	if is_instance_valid(_goomok):
+		_goomok.take_damage(dmg, Vector2.ZERO)
+	for e in _elites:
+		if is_instance_valid(e):
+			e.take_damage(dmg, Vector2.ZERO)
 
 func _on_elite_died(_e) -> void:
 	# 씨앗 드롭은 정예가 자체 처리. 재스폰은 _process가 담당.

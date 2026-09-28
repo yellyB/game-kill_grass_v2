@@ -452,17 +452,15 @@ var touch_direction: Vector2 = Vector2.ZERO
 var is_touching: bool = false
 
 func _unhandled_input(event: InputEvent) -> void:
-  # 1/2/3 키 = 슬롯1/2/3 아이템 발동 (일시정지 중엔 player가 입력을 안 받으므로 안전)
+  # 1/2 키 = 액티브 슬롯1/2 발동 (일시정지 중엔 player가 입력을 안 받으므로 안전)
+  # ※ Phase 2에서 PlatformService 경유로 이관 예정
   if event is InputEventKey and event.pressed and not event.echo:
     match event.physical_keycode:
       KEY_1:
-        GameManager.use_item(0)
+        ActiveManager.fire_slot(0)
         return
       KEY_2:
-        GameManager.use_item(1)
-        return
-      KEY_3:
-        GameManager.use_item(2)
+        ActiveManager.fire_slot(1)
         return
   if event is InputEventScreenTouch:
     if event.pressed:

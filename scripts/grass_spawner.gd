@@ -76,6 +76,7 @@ func _ready() -> void:
   setup_sparkle_multimesh()
   call_deferred("find_player")
   GameManager.upgrade_purchased.connect(_on_upgrade_purchased)
+  ActiveManager.active_fired.connect(_on_active_fired)
   GameManager.golden_bloom_requested.connect(_on_golden_bloom)
   GameManager.field_clear_requested.connect(_on_field_clear)
   GameManager.blackhole_requested.connect(_on_blackhole)
@@ -767,6 +768,26 @@ func _on_level_burst(radius_mult: float) -> void:
       _mark_grass_cut(gp)
       if d.type == 5 or randf() < GameManager.get_grass_drop_chance():
         spawn_coin(Vector2(gp.x, gp.y), d.value)
+
+# 액티브 메테오: 화면 내 모든 풀에 광역 피해(effect_value). 튼튼한 풀은 살아남음.
+func _on_active_fired(id: String) -> void:
+  if id != "meteor":
+    return
+  var dmg = int(ActiveManager.effect_value("meteor"))
+  for gp in grass_data:
+    var d = grass_data[gp]
+    if d.cut:
+      continue
+    d.health -= dmg
+    if d.health <= 0:
+      d.cut = true
+      d.regen_timer = 0.0
+      _mark_grass_cut(gp)
+      if d.type == 5 or randf() < GameManager.get_grass_drop_chance():
+        spawn_coin(Vector2(gp.x, gp.y), d.value)
+    else:
+      d.hp_bar_timer = 1.5
+      _add_active_timer(gp)
 
 func _draw() -> void:
   # Draw chunk boundaries (debug only)
