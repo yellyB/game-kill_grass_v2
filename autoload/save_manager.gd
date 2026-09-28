@@ -12,6 +12,7 @@ func _ready() -> void:
 func save_game() -> void:
   var save_data = GameManager.get_save_data()
   save_data.merge(WeaponManager.get_save_data())
+  save_data.merge(ActiveManager.get_save_data())
 
   var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
   if file:
@@ -35,6 +36,7 @@ func load_game() -> void:
       var save_data = json.get_data()
       GameManager.load_save_data(save_data)
       WeaponManager.load_save_data(save_data)
+      ActiveManager.load_save_data(save_data)
       game_loaded.emit()
 
 func delete_save() -> void:

@@ -20,6 +20,7 @@ func start_session() -> void:
 
   is_session_active = true
   GameManager.reset_session_data()
+  ActiveManager.reset_session()
   session_started.emit()
 
 func end_session(save: bool = true) -> void:
