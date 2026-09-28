@@ -127,6 +127,7 @@ func _ready() -> void:
   player_visual.visible = true
   weapon_pivot.visible = true
   _play_drop_animation()
+  ActiveManager.active_fired.connect(_on_active_fired)
   GameManager.powerup_acquired.connect(_on_powerup_acquired)
   GameManager.timed_buff_started.connect(_on_timed_buff_changed)
   GameManager.timed_buff_ended.connect(_on_timed_buff_ended)
@@ -134,6 +135,18 @@ func _ready() -> void:
   queue_redraw()  # For debug drawing
   # Find grass spawner
   call_deferred("find_grass_spawner")
+
+# 액티브 소용돌이: 흡수범위 내 코인을 즉시 끌어당김(is_being_collected 강제)
+func _on_active_fired(id: String) -> void:
+  if id != "vortex":
+    return
+  var radius = ActiveManager.effect_value("vortex")
+  for coin in get_tree().get_nodes_in_group("coins"):
+    if not is_instance_valid(coin) or coin.is_collected:
+      continue
+    if coin.global_position.distance_to(global_position) <= radius:
+      coin.can_pickup = true
+      coin.is_being_collected = true
 
 func find_grass_spawner() -> void:
   grass_spawner = get_tree().get_first_node_in_group("grass_spawner")
