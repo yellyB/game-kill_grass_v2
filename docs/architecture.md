@@ -76,6 +76,17 @@ PC `main.tscn`은 공유 `scenes/game/world.tscn`을 인스턴스 + PC HUD/오�
 - **익스포트**: `export_presets.cfg` Android 프리셋(arm64, `com.yelly.pooljukigi`, etc2/astc). iOS는 preset 추가 필요.
 - **남은 것**: 모바일 전용 세로 레이아웃은 디바이스 위 비주얼 반복이 필요(헤드리스 검증 불가) → 별도 작업.
 
+## UI 패리티 점검 (PC↔모바일 누락 방지)
+
+UI를 플랫폼별로 분리했으므로, 화면 요소를 한쪽에만 넣고 빠뜨리기 쉽다. 이를 막는 단일 매니페스트 + 점검기:
+
+- **매니페스트**: `docs/ui_features.json` — 모든 UI 요소를 `{scope, screen, pc, mobile, desc}`로 선언. **단일 출처 겸 체크리스트.**
+  - `scope`: `both`(양쪽 필수) / `pc_only` / `mobile_only`
+- **점검**: `python3 sim/ui_parity.py` → 표 출력, `both`인데 한쪽 누락이면 종료코드 1.
+- **규칙 (습관화)**: 화면에 요소를 **추가/삭제하면 매니페스트 한 줄**을 갱신하고 점검을 돌린다.
+  - 예) 모바일에 콤보 미터 구현 → `hud_combo_meter`의 `mobile: true`. 아직 안 했으면 `false` → 점검이 "누락!"으로 잡아줌.
+- 이렇게 하면 "어떤 요소가 어디에 있고 없는지"를 명령 하나로 확인 → 빠뜨림 방지.
+
 ## 아직 남은 커플링 (알려진 것)
 
 - 오디오(SFX/BGM)는 매니저·씬에 혼재 → 뷰/프레젠테이션 관심사, 우선순위 낮음(추후 정리 후보).

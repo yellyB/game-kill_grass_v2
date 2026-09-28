@@ -1,0 +1,44 @@
+{
+  "_comment": "UI 요소 패리티 매니페스트 (전략 B). 화면 요소를 추가/삭제하면 여기 한 줄만 갱신하고 `python3 sim/ui_parity.py`로 점검한다. scope=both는 pc·mobile 둘 다 true여야 통과. pc_only/mobile_only는 해당 플랫폼만 기대(반대편 true면 경고). 이 파일이 '무엇이 어디에 있나'의 단일 출처 겸 체크리스트다.",
+  "version": 1,
+  "features": {
+    "menu_play":            {"screen": "menu",    "scope": "both",        "pc": true,  "mobile": true,  "desc": "플레이(게임 시작) 버튼"},
+    "menu_upgrade_entry":   {"screen": "menu",    "scope": "both",        "pc": true,  "mobile": true,  "desc": "강화 화면 진입 버튼"},
+    "menu_active_upgrade":  {"screen": "menu",    "scope": "both",        "pc": true,  "mobile": true,  "desc": "액티브 강화 화면"},
+    "menu_quit":            {"screen": "menu",    "scope": "both",        "pc": true,  "mobile": true,  "desc": "종료 버튼"},
+    "menu_money":           {"screen": "menu",    "scope": "both",        "pc": true,  "mobile": true,  "desc": "코인/보석 표시"},
+    "menu_world_select":    {"screen": "menu",    "scope": "both",        "pc": true,  "mobile": true,  "desc": "월드 선택 오버레이"},
+    "menu_rune_bar":        {"screen": "menu",    "scope": "both",        "pc": true,  "mobile": true,  "desc": "룬 선택 바(게임레벨 8+)"},
+    "menu_settings":        {"screen": "menu",    "scope": "both",        "pc": true,  "mobile": true,  "desc": "설정 오버레이"},
+    "menu_upgrade_badge":   {"screen": "menu",    "scope": "both",        "pc": true,  "mobile": true,  "desc": "강화 버튼 느낌표 뱃지"},
+
+    "hud_money":            {"screen": "hud",     "scope": "both",        "pc": true,  "mobile": true,  "desc": "세션 획득 코인 표시"},
+    "hud_timer":            {"screen": "hud",     "scope": "both",        "pc": true,  "mobile": true,  "desc": "세션 남은 시간 표시/바"},
+    "hud_level_gauge":      {"screen": "hud",     "scope": "both",        "pc": true,  "mobile": true,  "desc": "세션 레벨 게이지(구 분노 바)"},
+    "hud_seed_indicator":   {"screen": "hud",     "scope": "both",        "pc": true,  "mobile": true,  "desc": "씨앗/거목 진행 표시"},
+    "hud_token_counter":    {"screen": "hud",     "scope": "both",        "pc": true,  "mobile": true,  "desc": "정수 카운터"},
+    "hud_active_gauges":    {"screen": "hud",     "scope": "both",        "pc": true,  "mobile": true,  "desc": "액티브(1/2) 충전 게이지"},
+    "hud_combo_meter":      {"screen": "hud",     "scope": "both",        "pc": true,  "mobile": true,  "desc": "콤보 미터(중앙 상단)"},
+    "hud_strength_label":   {"screen": "hud",     "scope": "both",        "pc": true,  "mobile": true,  "desc": "초월 레벨 표시"},
+    "hud_buff_icons":       {"screen": "hud",     "scope": "both",        "pc": true,  "mobile": true,  "desc": "버프 아이콘/타이머"},
+    "hud_powerup_notif":    {"screen": "hud",     "scope": "both",        "pc": true,  "mobile": true,  "desc": "파워업 획득 알림"},
+    "hud_touch_actives":    {"screen": "hud",     "scope": "mobile_only", "pc": false, "mobile": true,  "desc": "터치 액티브 온스크린 버튼"},
+
+    "upgrade_skill_tree":   {"screen": "upgrade", "scope": "both",        "pc": true,  "mobile": true,  "desc": "스킬 트리"},
+    "upgrade_weapon":       {"screen": "upgrade", "scope": "both",        "pc": true,  "mobile": true,  "desc": "무기 강화 섹션"},
+    "upgrade_description":  {"screen": "upgrade", "scope": "both",        "pc": true,  "mobile": true,  "desc": "선택 스킬 설명 패널"},
+    "upgrade_confirm":      {"screen": "upgrade", "scope": "both",        "pc": true,  "mobile": true,  "desc": "강화하기 버튼"},
+    "upgrade_gem_unlock":   {"screen": "upgrade", "scope": "both",        "pc": true,  "mobile": true,  "desc": "보석 해금 UI"},
+
+    "result_earnings":      {"screen": "result",  "scope": "both",        "pc": true,  "mobile": true,  "desc": "세션 결과 총 코인"},
+    "result_combo_tokens":  {"screen": "result",  "scope": "both",        "pc": true,  "mobile": true,  "desc": "콤보→정수 정산 행"},
+    "result_gems":          {"screen": "result",  "scope": "both",        "pc": true,  "mobile": true,  "desc": "보석 획득 행"},
+    "result_game_level":    {"screen": "result",  "scope": "both",        "pc": true,  "mobile": true,  "desc": "게임 레벨 표시"},
+
+    "powerup_selection":    {"screen": "overlay", "scope": "both",        "pc": true,  "mobile": true,  "desc": "레벨업 파워업 3택 오버레이"},
+
+    "money_coin":           {"screen": "money",   "scope": "both",        "pc": true,  "mobile": true,  "desc": "코인 행"},
+    "money_gem":            {"screen": "money",   "scope": "both",        "pc": true,  "mobile": true,  "desc": "보석 행"},
+    "money_crown":          {"screen": "money",   "scope": "both",        "pc": true,  "mobile": true,  "desc": "왕관(엔딩) 아이콘"}
+  }
+}
