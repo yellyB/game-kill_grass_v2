@@ -52,7 +52,8 @@ const SKILL_ICONS = {
   "magnet_range": preload("res://resources/images/skill/magnet_range.png"),
   "grass_density": preload("res://resources/images/skill/grass_density.png"),
   "grass_quality": preload("res://resources/images/skill/grass_quality.png"),
-  "chest_chance": preload("res://resources/images/skill/chest_chance.png"),
+  # combo_duration 전용 아이콘 없음 → 임시로 기존 파일 재사용(아트 교체 예정)
+  "combo_duration": preload("res://resources/images/skill/chest_chance.png"),
   "elite_chance": preload("res://resources/images/skill/elite_chance.png"),
   "fury_rate": preload("res://resources/images/skill/fury_rate.png"),
   "golden_chance": preload("res://resources/images/skill/golden_chance.png"),
@@ -1133,12 +1134,12 @@ func _get_skill_stat_data(type: String) -> Dictionary:
       else:
         nxt = _quality_stat_str(nl, ns)
       delta = ""
-    "chest_chance":
-      label = "상자확률"
-      var cv = ticks * 0.2
-      var nv = next_ticks * 0.2
-      cur = "%.1f%%" % cv
-      nxt = "%.1f%%" % nv
+    "combo_duration":
+      label = "콤보창"
+      var cv = 2.5 + ticks * 0.1
+      var nv = 2.5 + next_ticks * 0.1
+      cur = "%.1fs" % cv
+      nxt = "%.1fs" % nv
       delta = "+%.1f" % (nv - cv)
     "crit_chance":
       label = "치명타확률"

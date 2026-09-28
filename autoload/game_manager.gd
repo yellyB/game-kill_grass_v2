@@ -115,8 +115,8 @@ const SKILL_DEFS: Array = [
    "description": "맵 구획당 자라는 풀의 수가 증가합니다.\n구획당 풀: 1개 → 181개 (Lv별 틱당 +1/+2/.../+8)\n단계 5 | 최대 Lv.8"},
   {"type": "grass_quality", "name": "풀 등급", "short_name": "등급", "sub_max": 8, "max_level": 8,
    "description": "높은 등급의 풀로 자라날 확률이 높아집니다.\n홀수 레벨: 다음 등급 50%까지\n짝수 레벨: 다음 등급 100%까지\n단계 8 | 최대 Lv.8"},
-  {"type": "chest_chance", "name": "아이템 상자", "short_name": "아이템", "sub_max": 5, "max_level": 5,
-   "description": "필드 아이템 컨테이너 등장 확률이 높아집니다.\n확률: 0% → 5% (틱당 +0.2%)\n단계 5 | 최대 Lv.5"},
+  {"type": "combo_duration", "name": "콤보 지속", "short_name": "콤보", "sub_max": 5, "max_level": 5,
+   "description": "콤보 유지 시간이 늘어납니다.\n창: 2.5초 → 5.0초 (틱당 +0.1초)\n단계 5 | 최대 Lv.5"},
   {"type": "crit_chance", "name": "치명타 확률", "short_name": "치확", "sub_max": 5, "max_level": 4,
    "description": "치명타 발생 확률이 높아집니다.\n확률: 0% → 100% (틱당 +5%)\n단계 5 | 최대 Lv.4"},
   {"type": "crit_damage", "name": "치명타 피해", "short_name": "치피", "sub_max": 5, "max_level": 5,
@@ -152,7 +152,7 @@ const SKILL_GROUPS: Array = [
   },
   {
     "name": "탐험",
-    "skills": ["move_speed", "session_time", "chest_chance", "fury_rate", "elite_chance"],
+    "skills": ["move_speed", "session_time", "combo_duration", "fury_rate", "elite_chance"],
     "columns": 2,
   },
 ]
@@ -236,9 +236,10 @@ func register_kills(n: int) -> void:
   combo_timer = get_combo_window()  # 콤보 유지 시간(미처치 시 리셋)
   combo_changed.emit(combo_count, Combo.multiplier(combo_count))
 
-# 콤보 유지 창(초). 기본값 + "콤보 지속" 스킬 연장(P1-2에서 스킬 반영).
+# 콤보 유지 창(초). 기본값 + "콤보 지속" 스킬 틱당 연장.
 func get_combo_window() -> float:
-  return Balance.COMBO_WINDOW
+  var ticks = get_skill_total_progress("combo_duration")
+  return Balance.COMBO_WINDOW + ticks * Balance.COMBO_WINDOW_PER_TICK
 
 # 세션 종료 시 콤보 누적점수를 열매로 정산(1회). 결과 화면 표시값 반환.
 func settle_session_combo() -> int:
@@ -954,11 +955,6 @@ func get_grass_density_value() -> int:
       break
   return 1 + value
 
-# 상자 출현률: 0% → 5%, 틱당 +0.2% (총 25틱)
-func get_chest_spawn_chance() -> float:
-  var ticks = get_skill_total_progress("chest_chance")
-  return ticks * 0.002
-
 # 치명타 확률: 0% → 100%, 틱당 +5% (총 20틱)
 func get_crit_chance() -> float:
   if session_buff_critical_surge:
@@ -1204,11 +1200,11 @@ const SKILL_PREREQS = {
   "golden_reward:1": [{"type": "golden_chance", "level": 1}],
   # 탐험: row1 ← root(move_speed)
   "session_time:1": [{"type": "move_speed", "level": 1}],
-  "chest_chance:1": [{"type": "move_speed", "level": 1}],
+  "combo_duration:1": [{"type": "move_speed", "level": 1}],
   # 탐험: row2 ← row1 (OR)
-  "fury_rate:1": [{"type": "session_time_or_chest_chance", "level": 1}],
-  # 탐험: 정예 식물 ← 아이템 상자(컨테이너 확률과 대칭)
-  "elite_chance:1": [{"type": "chest_chance", "level": 1}],
+  "fury_rate:1": [{"type": "session_time_or_combo_duration", "level": 1}],
+  # 탐험: 정예 식물 ← 콤보 지속(대칭)
+  "elite_chance:1": [{"type": "combo_duration", "level": 1}],
 }
 
 # Required total skill levels to unlock (해금 게이트)
@@ -1230,7 +1226,7 @@ const SKILL_REQUIRED_TOTAL = {
   # 탐험: root (Lv.2+)
   "move_speed:2": 2,
   # 탐험: row1 (Lv.1+)
-  "chest_chance:1": 12,
+  "combo_duration:1": 12,
   # 탐험: row2 (Lv.1+)
   "fury_rate:1": 30,
   # 탐험: row2 (Lv.2+)
@@ -1454,8 +1450,8 @@ const SESSION_TIME_TICK_COSTS: Array = [
   [24000, 6000],    # Lv.4: 24000,30000,36000 = 90,000
   [250000, 62500],  # Lv.5: 250000,312500,375000 = 937,500
 ]
-# row1: 상자 확률 (5t×5L)
-const CHEST_CHANCE_TICK_COSTS: Array = [
+# row1: 콤보 지속 (5t×5L)
+const COMBO_DURATION_TICK_COSTS: Array = [
   [20, 2],          # Lv.1: 20,22,24,26,28 = 120
   [200, 20],        # Lv.2: 200,220,240,260,280 = 1,200
   [2200, 220],      # Lv.3: 2200,2420,2640,2860,3080 = 13,200
@@ -1496,7 +1492,7 @@ const SKILL_GEM_COSTS: Dictionary = {
   "golden_reward": {4: 1},
   "move_speed": {5: 1},
   "session_time": {3: 1, 5: 2},
-  "chest_chance": {4: 1, 5: 2},
+  "combo_duration": {4: 1, 5: 2},
   "fury_rate": {4: 1},
 }
 
@@ -1566,7 +1562,7 @@ func _get_raw_upgrade_cost(current_level: int, upgrade_type: String = "") -> int
     "fury_rate": FURY_RATE_TICK_COSTS,
     "move_speed": MOVE_SPEED_TICK_COSTS,
     "session_time": SESSION_TIME_TICK_COSTS,
-    "chest_chance": CHEST_CHANCE_TICK_COSTS,
+    "combo_duration": COMBO_DURATION_TICK_COSTS,
     "elite_chance": ELITE_CHANCE_TICK_COSTS,
   }
   tier_costs = SKILL_TICK_COSTS.get(upgrade_type, ATTACK_POWER_TICK_COSTS)
@@ -1690,6 +1686,16 @@ func load_save_data(data: Dictionary) -> void:
   unlocked_gem_skills = []
   for s in saved_gem_skills:
     unlocked_gem_skills.append(str(s))
+  # P1-2 마이그레이션: 구 'chest_chance' 스킬 → 'combo_duration' (레벨/서브/보석해금 이전)
+  if upgrade_levels.has("chest_chance"):
+    upgrade_levels["combo_duration"] = maxi(int(upgrade_levels.get("combo_duration", 0)), int(upgrade_levels["chest_chance"]))
+    upgrade_levels.erase("chest_chance")
+  if upgrade_sub_levels.has("chest_chance"):
+    upgrade_sub_levels["combo_duration"] = maxi(int(upgrade_sub_levels.get("combo_duration", 0)), int(upgrade_sub_levels["chest_chance"]))
+    upgrade_sub_levels.erase("chest_chance")
+  for i in range(unlocked_gem_skills.size()):
+    if unlocked_gem_skills[i].begins_with("chest_chance:"):
+      unlocked_gem_skills[i] = unlocked_gem_skills[i].replace("chest_chance:", "combo_duration:")
   var saved_keys = data.get("owned_keys", [])
   owned_keys = []
   for k in saved_keys:

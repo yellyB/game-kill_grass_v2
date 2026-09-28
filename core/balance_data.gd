@@ -19,6 +19,7 @@ const COMBO_WINDOW := 2.5             # 콤보 유지 창(초). 이 시간 내 �
 const COMBO_MAX_MULT := 3.0           # 처치당 점수 배율 수렴 상한(콤보 무한대 → 이 값)
 const COMBO_HALF_K := 30.0            # 배율이 (상한 절반)에 도달하는 콤보 수(수렴 속도)
 const COMBO_TOKEN_DIV := 200.0        # 세션 누적점수 → 열매 환산(점수 / 이 값 = 열매 개수)
+const COMBO_WINDOW_PER_TICK := 0.1    # "콤보 지속" 스킬 틱당 콤보 창 연장(초)
 
 # ── 룬(키스톤) 실효값 ──
 const RUNE_VAL := {                   # 배율형 룬

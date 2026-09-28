@@ -37,19 +37,7 @@ func _process(delta: float) -> void:
 	if _elites.size() < target_elites and _spawn_cooldown <= 0.0:
 		_spawn_elite()
 		_spawn_cooldown = 0.7
-	# 아이템 컨테이너: 기획대로 "아이템 상자" 스킬 확률 기반 스폰(기본 0%, 최대 5%)
-	# 청크 진입 확률을 근사: 주기적으로 등장 확률만큼 롤(이동 중이 아니면 진입 없음)
-	_containers = _containers.filter(func(c): return is_instance_valid(c))
-	_container_roll_t -= delta
-	if _container_roll_t <= 0.0:
-		_container_roll_t = 0.5
-		if is_instance_valid(player):
-			if GameManager.player_moving and randf() < GameManager.get_chest_spawn_chance():
-				_spawn_container()
-			# 멀어진 컨테이너 정리(청크 이탈 대체)
-			for c in _containers:
-				if is_instance_valid(c) and c.global_position.distance_to(player.global_position) > CONTAINER_DESPAWN_R:
-					c.queue_free()
+	# 아이템 컨테이너 스폰은 콤보/열매 재편으로 제거됨(P1-4에서 관련 코드 완전 정리)
 
 func _spawn_elite() -> void:
 	if not is_instance_valid(player):
