@@ -295,7 +295,7 @@ func _build_ui() -> void:
     reroll_btn.text = "다시 뽑기 (%d)" % GameManager.pu("reroll")
     reroll_btn.custom_minimum_size = Vector2(360, 90)
     reroll_btn.add_theme_font_size_override("font_size", 34)
-    GameManager.style_button(reroll_btn, "sub")
+    UIKit.style_button(reroll_btn, "sub")
     reroll_btn.pressed.connect(func():
       GameManager.play_button_click()
       GameManager.session_pu["reroll"] = GameManager.pu("reroll") - 1

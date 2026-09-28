@@ -20,13 +20,13 @@ func show_dialog(message: String, confirm_text: String = "확인", cancel_text: 
   cancel_btn.text = cancel_text
   var btn_row = confirm_btn.get_parent()
   if destructive:
-    GameManager.style_button(confirm_btn, "muted")
-    GameManager.style_button(cancel_btn, "main")
+    UIKit.style_button(confirm_btn, "muted")
+    UIKit.style_button(cancel_btn, "main")
     # destructive: confirm(불리)=왼쪽, cancel(유리)=오른쪽 → tscn 기본 순서
     btn_row.move_child(confirm_btn, 0)
   else:
-    GameManager.style_button(confirm_btn, "main")
-    GameManager.style_button(cancel_btn, "muted")
+    UIKit.style_button(confirm_btn, "main")
+    UIKit.style_button(cancel_btn, "muted")
     # non-destructive: cancel(불리)=왼쪽, confirm(유리)=오른쪽
     btn_row.move_child(cancel_btn, 0)
   visible = true

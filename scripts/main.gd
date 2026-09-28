@@ -52,7 +52,7 @@ func _ready() -> void:
   back_to_menu_btn.icon = preload("res://resources/images/icon/go_home.png")
   back_to_menu_btn.expand_icon = true
   back_to_menu_btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-  GameManager.style_button(back_to_menu_btn, "muted")
+  UIKit.style_button(back_to_menu_btn, "muted")
 
   # Setup session end overlay
   touch_button.pressed.connect(_on_session_end_touch)
@@ -280,7 +280,7 @@ func show_session_end_overlay(earnings: int) -> void:
   prefix_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
   prefix_label.add_theme_constant_override("outline_size", 4)
   earnings_container.add_child(prefix_label)
-  var coin_hbox = GameManager.create_coin_label(
+  var coin_hbox = UIKit.create_coin_label(
     GameManager.format_number(earnings), 42, Color(0.3, 1.0, 0.5), 4)
   earnings_container.add_child(coin_hbox)
   info_block.add_child(earnings_container)
@@ -451,7 +451,7 @@ func show_session_end_overlay(earnings: int) -> void:
   )
 
 func _create_gem_icon(icon_size: int) -> Control:
-  return GameManager._create_gem_display_icon(icon_size)
+  return UIKit.create_gem_icon(icon_size)
 
 func _create_key_icon(icon_size: int) -> Control:
   var container = Control.new()

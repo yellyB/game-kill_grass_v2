@@ -648,7 +648,7 @@ func _build_debug_buttons() -> void:
   var btn = Button.new()
   btn.text = "파워업"
   btn.add_theme_font_size_override("font_size", 18)
-  GameManager.style_button(btn, "sub")
+  UIKit.style_button(btn, "sub")
   btn.pressed.connect(_on_debug_powerup)
   btn.anchors_preset = Control.PRESET_BOTTOM_LEFT
   btn.anchor_left = 0.0

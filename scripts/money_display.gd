@@ -56,7 +56,7 @@ func _create_gem_row() -> void:
   gem_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
   gem_panel.add_child(gem_row)
 
-  var gem_icon = GameManager._create_gem_display_icon(36)
+  var gem_icon = UIKit.create_gem_icon(36)
   gem_row.add_child(gem_icon)
 
   gem_label = Label.new()

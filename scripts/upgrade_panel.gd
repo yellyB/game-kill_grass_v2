@@ -151,9 +151,9 @@ func _ready() -> void:
   # Button styles
   close_btn.icon = preload("res://resources/images/icon/go_back.png")
   close_btn.expand_icon = true
-  GameManager.style_button(close_btn, "muted")
+  UIKit.style_button(close_btn, "muted")
   _position_close_btn()
-  GameManager.style_button(confirm_btn)
+  UIKit.style_button(confirm_btn)
 
   # Skill count label (bottom-right of skill tree area)
   _skill_count_label = Label.new()
@@ -416,7 +416,7 @@ func _update_weapon_conditions(prereq_met: bool, has_money: bool, price: int) ->
     weapon_condition_vbox.add_child(prereq_label)
 
   var money_color = Color(0.3, 0.8, 0.55) if has_money else Color(0.9, 0.3, 0.3)
-  var money_cond_hbox = GameManager.create_coin_label(GameManager.format_number(price), 34, money_color, 0, true)
+  var money_cond_hbox = UIKit.create_coin_label(GameManager.format_number(price), 34, money_color, 0, true)
   weapon_condition_vbox.add_child(money_cond_hbox)
 
 func _update_next_weapon_card_style(can_buy: bool) -> void:
@@ -1493,14 +1493,14 @@ func _update_description_cost(cost: int, base_y: float, is_maxed: bool) -> void:
   # 코인 비용
   var affordable = GameManager.money >= cost
   var color = Color(1, 0.9, 0.3) if affordable else Color(1.0, 0.35, 0.3)
-  var coin_hbox = GameManager.create_coin_label(GameManager.format_number(cost), 36, color)
+  var coin_hbox = UIKit.create_coin_label(GameManager.format_number(cost), 36, color)
   cost_row.add_child(coin_hbox)
 
   description_panel.add_child(cost_row)
   _btn_cost_node = cost_row
 
 func _create_gem_icon(icon_size: int, tint: Color = Color(0.9, 0.2, 0.4)) -> Control:
-  return GameManager._create_gem_display_icon(icon_size, tint)
+  return UIKit.create_gem_icon(icon_size, tint)
 
 func _clear_btn_cost() -> void:
   if _btn_cost_node:

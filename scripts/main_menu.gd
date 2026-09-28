@@ -66,14 +66,14 @@ func _ready() -> void:
   play_btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
   play_btn.expand_icon = true
   play_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-  GameManager.style_button(play_btn, "main", Vector2(460, 288))
+  UIKit.style_button(play_btn, "main", Vector2(460, 288))
 
 
   upgrade_btn.text = "강화"
   upgrade_btn.icon = preload("res://resources/images/icon/icon_upgrade.png")
   upgrade_btn.expand_icon = true
   upgrade_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-  GameManager.style_button(upgrade_btn, "sub", Vector2(460, 112))
+  UIKit.style_button(upgrade_btn, "sub", Vector2(460, 112))
 
   # 강화 버튼 느낌표 뱃지
   _upgrade_badge = Label.new()
@@ -123,11 +123,11 @@ func _ready() -> void:
   var vbox := upgrade_btn.get_parent()
   vbox.add_child(_active_btn)
   vbox.move_child(_active_btn, upgrade_btn.get_index() + 1)
-  GameManager.style_button(_active_btn, "sub", Vector2(460, 112))
+  UIKit.style_button(_active_btn, "sub", Vector2(460, 112))
 
   quit_btn.text = "종료"
   quit_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-  GameManager.style_button(quit_btn, "muted", Vector2(460, 112))
+  UIKit.style_button(quit_btn, "muted", Vector2(460, 112))
 
   # Title animation
   animate_title()
@@ -310,7 +310,7 @@ func _open_world_select() -> void:
   _ws_action_btn.custom_minimum_size = Vector2(420, 90)
   _ws_action_btn.add_theme_font_size_override("font_size", 38)
   _ws_action_btn.pressed.connect(_on_action_btn_pressed)
-  GameManager.style_button(_ws_action_btn)
+  UIKit.style_button(_ws_action_btn)
   action_center.add_child(_ws_action_btn)
   _ws_update_action_btn()
 
@@ -324,7 +324,7 @@ func _open_world_select() -> void:
   close_btn.custom_minimum_size = Vector2(420, 90)
   close_btn.add_theme_font_size_override("font_size", 38)
   close_btn.pressed.connect(_close_world_select)
-  GameManager.style_button(close_btn, "muted")
+  UIKit.style_button(close_btn, "muted")
   close_center.add_child(close_btn)
 
 
@@ -357,7 +357,7 @@ func _refresh_rune_bar() -> void:
     var active = GameManager.active_rune == r.type
     b.text = r.name  # 잠김은 비활성 스타일로 표현
     b.disabled = not unlocked
-    GameManager.style_button(b, "main" if active else "muted")
+    UIKit.style_button(b, "main" if active else "muted")
     if unlocked:
       b.pressed.connect(func():
         GameManager.play_button_click()
@@ -550,11 +550,11 @@ func _create_world_card(index: int) -> PanelContainer:
       if strength >= GameManager.MAX_STRENGTH_LEVEL:
         str_btn.text = "MAX"
         str_btn.disabled = true
-        GameManager.style_button(str_btn, "muted")
+        UIKit.style_button(str_btn, "muted")
       else:
         str_btn.text = "초월"
         str_btn.pressed.connect(_on_strengthen_pressed.bind(index))
-        GameManager.style_button(str_btn, "main")
+        UIKit.style_button(str_btn, "main")
 
       str_hbox.add_child(str_btn)
 
@@ -624,7 +624,7 @@ func _create_world_card(index: int) -> PanelContainer:
       hbox.add_child(status_vbox)
 
       var cost_color = Color(1, 0.9, 0.3) if GameManager.money >= cost else Color(0.5, 0.4, 0.4)
-      var cost_hbox = GameManager.create_coin_label(GameManager.format_number(cost), 38, cost_color)
+      var cost_hbox = UIKit.create_coin_label(GameManager.format_number(cost), 38, cost_color)
       cost_hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
       status_vbox.add_child(cost_hbox)
 
@@ -734,7 +734,7 @@ func _show_strengthen_dialog(world: int) -> void:
   cost_label.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
   cost_row.add_child(cost_label)
   var cost_color = Color(1, 0.9, 0.3) if can_afford else Color(0.8, 0.3, 0.3)
-  var coin_label = GameManager.create_coin_label(GameManager.format_number(cost), 28, cost_color)
+  var coin_label = UIKit.create_coin_label(GameManager.format_number(cost), 28, cost_color)
   cost_row.add_child(coin_label)
   vbox.add_child(cost_row)
 
@@ -797,7 +797,7 @@ func _show_strengthen_dialog(world: int) -> void:
   cancel_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
   cancel_btn.custom_minimum_size = Vector2(0, 80)
   cancel_btn.add_theme_font_size_override("font_size", 28)
-  GameManager.style_button(cancel_btn, "muted")
+  UIKit.style_button(cancel_btn, "muted")
   cancel_btn.pressed.connect(_on_strengthen_cancelled)
   btn_row.add_child(cancel_btn)
 
@@ -807,7 +807,7 @@ func _show_strengthen_dialog(world: int) -> void:
   confirm_btn.custom_minimum_size = Vector2(0, 80)
   confirm_btn.add_theme_font_size_override("font_size", 28)
   confirm_btn.disabled = not can_afford
-  GameManager.style_button(confirm_btn, "main" if can_afford else "muted")
+  UIKit.style_button(confirm_btn, "main" if can_afford else "muted")
   confirm_btn.pressed.connect(_on_strengthen_confirmed.bind(world))
   btn_row.add_child(confirm_btn)
 
@@ -952,7 +952,7 @@ func _open_active_overlay() -> void:
   close_btn.custom_minimum_size = Vector2(420, 90)
   close_btn.add_theme_font_size_override("font_size", 38)
   close_btn.pressed.connect(_close_active_overlay)
-  GameManager.style_button(close_btn, "muted")
+  UIKit.style_button(close_btn, "muted")
   close_center.add_child(close_btn)
 
   _rebuild_active_cards()
@@ -1024,11 +1024,11 @@ func _build_active_stat_row(id: String, stat: String, label_text: String, cur_va
   if cost < 0:
     btn.text = "최대"
     btn.disabled = true
-    GameManager.style_button(btn, "muted")
+    UIKit.style_button(btn, "muted")
   else:
     btn.text = "정수 %d" % cost
     btn.disabled = not unlocked or not ActiveManager.can_upgrade(id, stat)
-    GameManager.style_button(btn, "sub")
+    UIKit.style_button(btn, "sub")
     btn.pressed.connect(func():
       if ActiveManager.upgrade(id, stat):
         GameManager.play_skill_upgrade_sound()
@@ -1259,7 +1259,7 @@ func _open_settings() -> void:
   close_btn.custom_minimum_size = Vector2(420, 90)
   close_btn.add_theme_font_size_override("font_size", 38)
   close_btn.pressed.connect(_close_settings)
-  GameManager.style_button(close_btn, "muted")
+  UIKit.style_button(close_btn, "muted")
   close_center.add_child(close_btn)
 
 func _create_toggle(initial: bool, callback: Callable) -> CheckButton:
@@ -1345,35 +1345,35 @@ func _build_debug_buttons() -> void:
   reset_btn.text = "초기화"
   reset_btn.add_theme_font_size_override("font_size", 18)
   reset_btn.pressed.connect(_on_debug_reset)
-  GameManager.style_button(reset_btn, "sub")
+  UIKit.style_button(reset_btn, "sub")
   _debug_container.add_child(reset_btn)
 
   var money_btn = Button.new()
   money_btn.text = "+$10000000"
   money_btn.add_theme_font_size_override("font_size", 18)
   money_btn.pressed.connect(_on_debug_add_money)
-  GameManager.style_button(money_btn, "sub")
+  UIKit.style_button(money_btn, "sub")
   _debug_container.add_child(money_btn)
 
   var maxskill_btn = Button.new()
   maxskill_btn.text = "스킬MAX"
   maxskill_btn.add_theme_font_size_override("font_size", 18)
   maxskill_btn.pressed.connect(_on_debug_max_skills)
-  GameManager.style_button(maxskill_btn, "sub")
+  UIKit.style_button(maxskill_btn, "sub")
   _debug_container.add_child(maxskill_btn)
 
   var gem_btn = Button.new()
   gem_btn.text = "+보석30"
   gem_btn.add_theme_font_size_override("font_size", 18)
   gem_btn.pressed.connect(_on_debug_add_gems)
-  GameManager.style_button(gem_btn, "sub")
+  UIKit.style_button(gem_btn, "sub")
   _debug_container.add_child(gem_btn)
 
   var unlock_btn = Button.new()
   unlock_btn.text = "월드 전체해금"
   unlock_btn.add_theme_font_size_override("font_size", 18)
   unlock_btn.pressed.connect(_on_debug_unlock_all)
-  GameManager.style_button(unlock_btn, "sub")
+  UIKit.style_button(unlock_btn, "sub")
   _debug_container.add_child(unlock_btn)
 
 func _on_debug_reset() -> void:
