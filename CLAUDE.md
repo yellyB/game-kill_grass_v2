@@ -4,6 +4,10 @@
 > **v2의 단일 기획서 = `docs/game-spec.md`** (게임 디자인+포팅+시뮬 아키텍처+로드맵). 파워업/아이템 목록은 `docs/powerups.md`, 밸런스 수치는 `sim/balance_sim.py`(→`core/`)가 소유. 원본 자료는 `docs/legacy/`.
 > **아래 원본 설명은 이식 참조용**이며, v2 설계와 충돌 시 `game-spec.md`가 우선한다.
 
+> 🧭 **v2 아키텍처(멀티플랫폼) 필독 = `docs/architecture.md`**: 한 코어(core/·매니저) 공유 + **UI는 플랫폼별 완전 분리**(`scenes/pc`·`scripts/pc` ↔ `scenes/mobile`·`scripts/mobile`, 공유는 `scenes/game/`·`ui_kit`·`PowerupData`). 씬 선택은 `UIRouter`, 입력/진동/종료는 `PlatformService`. 데스크톱에서 모바일 미리보기: `Godot --path . res://scenes/boot.tscn --mobile-ui`.
+> ✅ **UI 요소 누락 방지**: 화면 요소 추가/삭제 시 `docs/ui_features.json` 한 줄 갱신 후 **`python3 sim/ui_parity.py`** 로 PC↔모바일 패리티 점검(누락이면 종료코드 1). 이 도구가 있다는 걸 잊지 말 것.
+> ⚙️ **검증은 항상 절대경로 Godot**: `/Applications/Godot.app/Contents/MacOS/Godot` (PATH에 `godot` 없을 수 있음 → 거짓 통과 주의).
+
 ## 프로젝트 개요
 풀을 베어서 돈을 모으는 방치형 모바일 게임. 플레이어가 이동하면 자동으로 범위 내 풀을 베고, 떨어진 코인을 수집하여 골드를 획득한다. 7개 월드를 해금하며 진행.
 
