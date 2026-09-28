@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://celiteplantv2"]
 
-[ext_resource type="Script" path="res://scripts/elite_plant.gd" id="1_elite"]
+[ext_resource type="Script" path="res://scripts/game/elite_plant.gd" id="1_elite"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_elite"]
 radius = 36.0

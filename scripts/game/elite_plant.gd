@@ -4,7 +4,7 @@ extends Node2D
 
 signal died(elite)
 
-const DROPPED_ITEM = preload("res://scenes/world/dropped_item.tscn")
+const DROPPED_ITEM = preload("res://scenes/game/dropped_item.tscn")
 
 var max_hp: float = 20.0
 var hp: float = 20.0

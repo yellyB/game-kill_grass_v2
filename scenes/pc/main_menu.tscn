@@ -1,11 +1,11 @@
 [gd_scene load_steps=7 format=3 uid="uid://cmenu123"]
 
-[ext_resource type="Script" path="res://scripts/main_menu.gd" id="1_menu"]
-[ext_resource type="PackedScene" uid="uid://cupgrade123" path="res://scenes/ui/upgrade_panel.tscn" id="2_upgrade"]
+[ext_resource type="Script" path="res://scripts/pc/main_menu.gd" id="1_menu"]
+[ext_resource type="PackedScene" uid="uid://cupgrade123" path="res://scenes/pc/upgrade_panel.tscn" id="2_upgrade"]
 [ext_resource type="Texture2D" uid="uid://muujnakyfyb1" path="res://resources/images/main.png" id="5_main_bg"]
 [ext_resource type="Texture2D" uid="uid://do3vq3o5qqsor" path="res://resources/images/title.png" id="6_title"]
-[ext_resource type="PackedScene" uid="uid://cku35fegcf51v" path="res://scenes/ui/money_display.tscn" id="7_money"]
-[ext_resource type="PackedScene" path="res://scenes/ui/confirm_dialog.tscn" id="8_confirm"]
+[ext_resource type="PackedScene" uid="uid://cku35fegcf51v" path="res://scenes/pc/money_display.tscn" id="7_money"]
+[ext_resource type="PackedScene" path="res://scenes/pc/confirm_dialog.tscn" id="8_confirm"]
 
 [node name="MainMenu" type="Control"]
 layout_mode = 3

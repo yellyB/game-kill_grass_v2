@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://cfloatingtext"]
 
-[ext_resource type="Script" path="res://scripts/floating_text.gd" id="1_float"]
+[ext_resource type="Script" path="res://scripts/game/floating_text.gd" id="1_float"]
 
 [node name="FloatingText" type="Node2D"]
 z_index = 100

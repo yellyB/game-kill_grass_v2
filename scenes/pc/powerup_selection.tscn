@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://cpowerupsel1"]
 
-[ext_resource type="Script" path="res://scripts/powerup_selection.gd" id="1_sel"]
+[ext_resource type="Script" path="res://scripts/pc/powerup_selection.gd" id="1_sel"]
 
 [node name="PowerupSelection" type="CanvasLayer"]
 process_mode = 3

@@ -3,7 +3,7 @@ extends Node2D
 signal input_direction_changed(direction: Vector2)
 signal player_hit
 
-const FloatingTextScene = preload("res://scenes/ui/floating_text.tscn")
+const FloatingTextScene = preload("res://scenes/game/floating_text.tscn")
 const SFX_GRASS = preload("res://resources/sounds/effect/grass_swoosh.wav")
 const SFX_COIN = preload("res://resources/sounds/effect/pick_coin.wav")
 

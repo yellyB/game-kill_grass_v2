@@ -3,8 +3,8 @@ extends Node2D
 ## 씨앗 N개 도달(GameManager.goomok_ready) → 정예 정리 후 거목 소환.
 ## WorldRoot 자식으로 배치 → 스폰물이 월드 스크롤을 따라 이동.
 
-const ELITE = preload("res://scenes/world/elite_plant.tscn")
-const GOOMOK = preload("res://scenes/world/great_tree.tscn")
+const ELITE = preload("res://scenes/game/elite_plant.tscn")
+const GOOMOK = preload("res://scenes/game/great_tree.tscn")
 
 var player: Node2D
 var _elites: Array = []

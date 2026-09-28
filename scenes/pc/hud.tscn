@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://chud123"]
 
-[ext_resource type="Script" path="res://scripts/hud.gd" id="1_hud"]
-[ext_resource type="PackedScene" path="res://scenes/ui/money_display.tscn" id="2_money"]
+[ext_resource type="Script" path="res://scripts/pc/hud.gd" id="1_hud"]
+[ext_resource type="PackedScene" path="res://scenes/pc/money_display.tscn" id="2_money"]
 [ext_resource type="Texture2D" path="res://resources/images/icon/timer.png" id="3_timer_icon"]
 [ext_resource type="Texture2D" path="res://resources/images/icon/monster.png" id="4_monster_icon"]
 

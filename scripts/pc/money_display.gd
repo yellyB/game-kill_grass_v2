@@ -14,7 +14,7 @@ func _ready() -> void:
   GameManager.money_changed.connect(_on_money_changed)
   _style_panel(coin_panel)
   # HUD(플레이 중)에서는 보석 패널 숨김
-  var in_hud = get_tree().current_scene and get_tree().current_scene.scene_file_path == "res://scenes/core/main.tscn"
+  var in_hud = get_tree().current_scene and get_tree().current_scene.scene_file_path == "res://scenes/pc/main.tscn"
   if not in_hud:
     _create_gem_row()
     if GameManager.has_potion:

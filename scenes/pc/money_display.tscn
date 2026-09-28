@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://cku35fegcf51v"]
 
-[ext_resource type="Script" path="res://scripts/money_display.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/pc/money_display.gd" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://df2f0qoyvfmcy" path="res://resources/images/coin.png" id="2_coin"]
 
 [node name="MoneyDisplay" type="VBoxContainer"]

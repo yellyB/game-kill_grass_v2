@@ -1,14 +1,14 @@
 [gd_scene load_steps=12 format=3 uid="uid://cmain123"]
 
-[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
-[ext_resource type="Script" path="res://scripts/world_root.gd" id="2_world"]
-[ext_resource type="Script" path="res://scripts/grass_spawner.gd" id="3_spawner"]
-[ext_resource type="Script" path="res://scripts/field_spawner.gd" id="4_fspawner"]
-[ext_resource type="Script" path="res://scripts/player.gd" id="5_player"]
-[ext_resource type="Script" path="res://scripts/game_camera.gd" id="6_camera"]
-[ext_resource type="PackedScene" uid="uid://chud123" path="res://scenes/ui/hud.tscn" id="7_hud"]
-[ext_resource type="PackedScene" uid="uid://cupgrade123" path="res://scenes/ui/upgrade_panel.tscn" id="8_upgrade"]
-[ext_resource type="PackedScene" path="res://scenes/ui/confirm_dialog.tscn" id="12_confirm"]
+[ext_resource type="Script" path="res://scripts/pc/main.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/game/world_root.gd" id="2_world"]
+[ext_resource type="Script" path="res://scripts/game/grass_spawner.gd" id="3_spawner"]
+[ext_resource type="Script" path="res://scripts/game/field_spawner.gd" id="4_fspawner"]
+[ext_resource type="Script" path="res://scripts/game/player.gd" id="5_player"]
+[ext_resource type="Script" path="res://scripts/game/game_camera.gd" id="6_camera"]
+[ext_resource type="PackedScene" uid="uid://chud123" path="res://scenes/pc/hud.tscn" id="7_hud"]
+[ext_resource type="PackedScene" uid="uid://cupgrade123" path="res://scenes/pc/upgrade_panel.tscn" id="8_upgrade"]
+[ext_resource type="PackedScene" path="res://scenes/pc/confirm_dialog.tscn" id="12_confirm"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_body"]
 radius = 30.0

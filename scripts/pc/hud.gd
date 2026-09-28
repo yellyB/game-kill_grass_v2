@@ -512,7 +512,7 @@ func _on_fury_changed(value: float) -> void:
 func _on_level_up(_new_level: int) -> void:
   PlatformService.vibrate(120)  # 데스크톱에선 자동 무시
   _flash_fury_bar()
-  var selection = preload("res://scenes/ui/powerup_selection.tscn").instantiate()
+  var selection = preload("res://scenes/pc/powerup_selection.tscn").instantiate()
   get_tree().root.add_child(selection)
 
 # ── 분노 파티클 (풀 → 게이지) ──
@@ -703,5 +703,5 @@ func _build_debug_buttons() -> void:
   padded_area.add_child(btn)
 
 func _on_debug_powerup() -> void:
-  var selection = preload("res://scenes/ui/powerup_selection.tscn").instantiate()
+  var selection = preload("res://scenes/pc/powerup_selection.tscn").instantiate()
   get_tree().root.add_child(selection)

@@ -598,7 +598,7 @@ func attack_grass_in_area(center: Vector2, radius: float) -> Dictionary:
   return {"value": total_value, "hit": hit_count > 0, "xp": total_xp, "fury": total_max_health, "crit": is_crit and hit_count > 0}
 
 func spawn_coin(pos: Vector2, value: int) -> void:
-  var CoinScene = preload("res://scenes/world/coin.tscn")
+  var CoinScene = preload("res://scenes/game/coin.tscn")
   var coin = CoinScene.instantiate()
   coin.position = pos
   var final_value = int(round(value * GameManager.get_grass_reward_multiplier()))
