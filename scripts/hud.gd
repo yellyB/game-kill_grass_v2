@@ -132,10 +132,9 @@ func _on_timed_buff_started(type: String, _duration: float) -> void:
   hbox.alignment = BoxContainer.ALIGNMENT_CENTER
   hbox.add_theme_constant_override("separation", 6)
 
-  var PowerupSelection = preload("res://scripts/powerup_selection.gd")
-  var data = PowerupSelection.get_powerup_data_by_type(type)
+  var data = PowerupData.get_powerup_data_by_type(type)
   var pcolor = data.get("color", Color.WHITE)
-  var tex = PowerupSelection.get_powerup_texture(data) if not data.is_empty() else null
+  var tex = PowerupData.get_powerup_texture(data) if not data.is_empty() else null
   if tex:
     var icon = TextureRect.new()
     icon.texture = tex
@@ -173,9 +172,8 @@ func _update_buff_timers() -> void:
     label.text = "%.1fs" % remaining
 
 func _update_perm_buff(type: String, _level: int) -> void:
-  var PowerupSelection = preload("res://scripts/powerup_selection.gd")
-  var data = PowerupSelection.get_powerup_data_by_type(type)
-  var tex = PowerupSelection.get_powerup_texture(data) if not data.is_empty() else null
+  var data = PowerupData.get_powerup_data_by_type(type)
+  var tex = PowerupData.get_powerup_texture(data) if not data.is_empty() else null
   var icon = TextureRect.new()
   icon.custom_minimum_size = Vector2(64, 64)
   icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -622,8 +620,7 @@ func _show_powerup_notification(type: String, level: int, prefix: String = "") -
   if not _notif_container:
     _setup_notif_container()
 
-  var PowerupSelection = preload("res://scripts/powerup_selection.gd")
-  var data = PowerupSelection.get_powerup_data_by_type(type)
+  var data = PowerupData.get_powerup_data_by_type(type)
   if data.is_empty():
     return
 
@@ -643,7 +640,7 @@ func _show_powerup_notification(type: String, level: int, prefix: String = "") -
   hbox.modulate = Color(1, 1, 1, 0)
 
   # 아이콘
-  var tex = PowerupSelection.get_powerup_texture(data)
+  var tex = PowerupData.get_powerup_texture(data)
   if tex:
     var icon = TextureRect.new()
     icon.texture = tex

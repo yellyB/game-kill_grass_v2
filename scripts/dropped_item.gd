@@ -55,10 +55,9 @@ func setup_item(p_type: String, p_target: Node2D) -> void:
 	item_drop_type = p_type
 	target = p_target
 	# 파워업 이미지 재사용
-	var PowerupSelection = preload("res://scripts/powerup_selection.gd")
-	var data = PowerupSelection.get_powerup_data_by_type(p_type)
+	var data = PowerupData.get_powerup_data_by_type(p_type)
 	if not data.is_empty():
-		item_texture = PowerupSelection.get_powerup_texture(data)
+		item_texture = PowerupData.get_powerup_texture(data)
 
 func _ready() -> void:
 	if is_key:
