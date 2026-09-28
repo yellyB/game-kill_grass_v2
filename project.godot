@@ -41,7 +41,7 @@ window/size/window_height_override=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/stretch/scale=0.6
-window/handheld/orientation="landscape"
+window/handheld/orientation="portrait"
 
 [input]
 

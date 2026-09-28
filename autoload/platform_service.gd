@@ -8,6 +8,11 @@ enum Backend { KEYBOARD_MOUSE, TOUCH }
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
+## 개발용: 데스크톱에서도 모바일 UI/터치를 미리보기. 실행 인자에 --mobile-ui 추가 시 활성.
+##   예) Godot --path . res://scenes/boot.tscn --mobile-ui   (또는 에디터 Run 인자)
+func _force_mobile_preview() -> bool:
+	return "--mobile-ui" in OS.get_cmdline_args() or "--mobile-ui" in OS.get_cmdline_user_args()
+
 func is_mobile() -> bool:
 	return OS.has_feature("mobile")
 
@@ -15,7 +20,9 @@ func platform_name() -> String:
 	return OS.get_name()  # "Windows" / "macOS" / "Linux" / "Android" / "iOS"
 
 func input_backend() -> int:
-	return Backend.TOUCH if is_mobile() else Backend.KEYBOARD_MOUSE
+	if is_mobile() or _force_mobile_preview():
+		return Backend.TOUCH
+	return Backend.KEYBOARD_MOUSE
 
 func uses_touch() -> bool:
 	return input_backend() == Backend.TOUCH

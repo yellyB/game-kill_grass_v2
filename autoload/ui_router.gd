@@ -8,10 +8,11 @@ const SETS := {
 		"main_menu": "res://scenes/pc/main_menu.tscn",
 		"game": "res://scenes/pc/main.tscn",
 	},
-	# ── 모바일 UI 세트는 별도 제작 예정(scenes/mobile/) ──
-	# PC 씬을 공유하지 않는다. 아래처럼 mobile 전용 씬을 만들면 자동으로 그 세트를 로드:
-	#   "mobile": { "main_menu": "res://scenes/mobile/main_menu.tscn", "game": "res://scenes/mobile/main.tscn" }
-	# 공유되는 것은 core/·매니저·scenes/game/world.tscn(게임플레이 월드)뿐.
+	# 모바일 UI 세트(세로) — PC와 별개 씬. 공유는 core/·매니저·scenes/game/world.tscn 뿐.
+	"mobile": {
+		"main_menu": "res://scenes/mobile/main_menu.tscn",
+		"game": "res://scenes/mobile/main.tscn",
+	},
 }
 
 func _ready() -> void:
