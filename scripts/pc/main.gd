@@ -12,9 +12,9 @@ const BGM_PATHS: Array = [
   "res://resources/sounds/bgm_용의봉우리.ogg",          # 6: 용의 봉우리
 ]
 
-@onready var world_root: Node2D = $WorldRoot
-@onready var player: CharacterBody2D = $Player
-@onready var camera: Camera2D = $Player/GameCamera
+@onready var world_root: Node2D = $World/WorldRoot
+@onready var player: CharacterBody2D = $World/Player
+@onready var camera: Camera2D = $World/Player/GameCamera
 @onready var upgrade_panel: Control = $UpgradePanel/Control
 @onready var back_to_menu_btn: Button = $BackToMenuUI/BackToMenuBtn
 @onready var confirm_dialog: Control = $BackToMenuUI/ConfirmDialog

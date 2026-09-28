@@ -1,65 +1,15 @@
-[gd_scene load_steps=12 format=3 uid="uid://cmain123"]
+[gd_scene load_steps=5 format=3 uid="uid://cmain123"]
 
 [ext_resource type="Script" path="res://scripts/pc/main.gd" id="1_main"]
-[ext_resource type="Script" path="res://scripts/game/world_root.gd" id="2_world"]
-[ext_resource type="Script" path="res://scripts/game/grass_spawner.gd" id="3_spawner"]
-[ext_resource type="Script" path="res://scripts/game/field_spawner.gd" id="4_fspawner"]
-[ext_resource type="Script" path="res://scripts/game/player.gd" id="5_player"]
-[ext_resource type="Script" path="res://scripts/game/game_camera.gd" id="6_camera"]
+[ext_resource type="PackedScene" uid="uid://bwrldshared7x" path="res://scenes/game/world.tscn" id="2_world"]
 [ext_resource type="PackedScene" uid="uid://chud123" path="res://scenes/pc/hud.tscn" id="7_hud"]
 [ext_resource type="PackedScene" uid="uid://cupgrade123" path="res://scenes/pc/upgrade_panel.tscn" id="8_upgrade"]
 [ext_resource type="PackedScene" path="res://scenes/pc/confirm_dialog.tscn" id="12_confirm"]
 
-[sub_resource type="CircleShape2D" id="CircleShape2D_body"]
-radius = 30.0
-
-[sub_resource type="CircleShape2D" id="CircleShape2D_attack"]
-radius = 100.0
-
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main")
 
-[node name="WorldRoot" type="Node2D" parent="."]
-script = ExtResource("2_world")
-
-[node name="Background" type="ColorRect" parent="WorldRoot"]
-offset_left = -3000.0
-offset_top = -3000.0
-offset_right = 3000.0
-offset_bottom = 3000.0
-mouse_filter = 2
-color = Color(0.18, 0.35, 0.18, 1)
-
-[node name="GrassSpawner" type="Node2D" parent="WorldRoot" groups=["grass_spawner"]]
-script = ExtResource("3_spawner")
-
-[node name="FieldSpawner" type="Node2D" parent="WorldRoot"]
-script = ExtResource("4_fspawner")
-
-[node name="Player" type="CharacterBody2D" parent="." groups=["player"]]
-collision_mask = 2
-script = ExtResource("5_player")
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Player"]
-shape = SubResource("CircleShape2D_body")
-
-[node name="PlayerVisual" type="Node2D" parent="Player"]
-
-[node name="AttackArea" type="Area2D" parent="Player"]
-collision_layer = 0
-collision_mask = 2
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Player/AttackArea"]
-shape = SubResource("CircleShape2D_attack")
-
-[node name="AttackTimer" type="Timer" parent="Player"]
-wait_time = 0.2
-one_shot = true
-
-[node name="WeaponPivot" type="Node2D" parent="Player"]
-
-[node name="GameCamera" type="Camera2D" parent="Player"]
-script = ExtResource("6_camera")
+[node name="World" parent="." instance=ExtResource("2_world")]
 
 [node name="HUD" parent="." instance=ExtResource("7_hud")]
 
