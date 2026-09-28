@@ -57,6 +57,9 @@ func _ready() -> void:
   # 정수(수확의 정수 — 콤보 전용 재화) 카운터
   _setup_token_indicator()
 
+  # 액티브(1/2) 충전 게이지
+  _setup_active_gauges()
+
 func _process(delta: float) -> void:
   # Update timed buff countdowns
   _update_buff_timers()
@@ -245,6 +248,76 @@ func _make_token_icon() -> Control:
 func _update_token_label(amount: int) -> void:
   if token_label:
     token_label.text = str(amount)
+
+# ── 액티브(1/2) 충전 게이지 ──
+var _active_rows: Dictionary = {}  # id -> {"bar": ProgressBar, "label": Label, "row": Control}
+
+func _setup_active_gauges() -> void:
+  var box = VBoxContainer.new()
+  box.position = Vector2(0, 200)
+  box.add_theme_constant_override("separation", 8)
+  box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+  padded_area.add_child(box)
+  var ids = ActiveManager.active_ids()
+  for i in ids.size():
+    var id: String = ids[i]
+    var row = HBoxContainer.new()
+    row.add_theme_constant_override("separation", 8)
+    row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    # 키 배지 (1/2)
+    var key = Label.new()
+    key.text = str(i + 1)
+    key.custom_minimum_size = Vector2(30, 30)
+    key.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    key.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    key.add_theme_font_size_override("font_size", 22)
+    key.add_theme_color_override("font_color", Color(1, 1, 1))
+    key.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+    key.add_theme_constant_override("outline_size", 3)
+    key.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    row.add_child(key)
+    # 충전 바
+    var bar = ProgressBar.new()
+    bar.custom_minimum_size = Vector2(120, 22)
+    bar.min_value = 0.0
+    bar.max_value = 1.0
+    bar.show_percentage = false
+    bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    row.add_child(bar)
+    # 이름
+    var name_label = Label.new()
+    name_label.text = ActiveManager.active_name(id)
+    name_label.add_theme_font_size_override("font_size", 18)
+    name_label.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85))
+    name_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+    name_label.add_theme_constant_override("outline_size", 3)
+    name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    row.add_child(name_label)
+    box.add_child(row)
+    _active_rows[id] = {"bar": bar, "label": name_label, "row": row}
+    row.visible = ActiveManager.is_unlocked(id)  # 해금 = 게임 레벨(세션 중 불변)
+    _update_active_gauge(id, ActiveManager.get_charge(id))
+  ActiveManager.charge_changed.connect(_update_active_gauge)
+  ActiveManager.active_ready.connect(_on_active_ready)
+
+func _update_active_gauge(id: String, ratio: float) -> void:
+  if not _active_rows.has(id):
+    return
+  var bar: ProgressBar = _active_rows[id]["bar"]
+  bar.value = ratio
+  var name_label: Label = _active_rows[id]["label"]
+  if ratio >= 1.0:
+    name_label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.3))  # 준비 완료 = 금색
+  else:
+    name_label.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85))
+
+func _on_active_ready(id: String) -> void:
+  if not _active_rows.has(id):
+    return
+  var row: Control = _active_rows[id]["row"]
+  var tw = create_tween()
+  tw.tween_property(row, "modulate", Color(1.4, 1.4, 1.4), 0.15)
+  tw.tween_property(row, "modulate", Color(1, 1, 1), 0.15)
 
 func _make_seed_icon() -> Control:
   var c = Control.new()

@@ -47,6 +47,9 @@ func active_ids() -> Array:
 		ids.append(d.id)
 	return ids
 
+func active_name(id: String) -> String:
+	return str(_def(id).get("name", id))
+
 func is_unlocked(id: String) -> bool:
 	return GameManager.get_game_level() >= int(_def(id).get("unlock_lv", 1))
 
