@@ -465,16 +465,13 @@ var touch_direction: Vector2 = Vector2.ZERO
 var is_touching: bool = false
 
 func _unhandled_input(event: InputEvent) -> void:
-  # 1/2 키 = 액티브 슬롯1/2 발동 (일시정지 중엔 player가 입력을 안 받으므로 안전)
-  # ※ Phase 2에서 PlatformService 경유로 이관 예정
-  if event is InputEventKey and event.pressed and not event.echo:
-    match event.physical_keycode:
-      KEY_1:
-        ActiveManager.fire_slot(0)
-        return
-      KEY_2:
-        ActiveManager.fire_slot(1)
-        return
+  # 액티브 슬롯 = InputMap 액션(플랫폼 이식 가능). 모바일은 HUD 버튼이 같은 fire_slot 호출.
+  if event.is_action_pressed("active_slot_1"):
+    ActiveManager.fire_slot(0)
+    return
+  if event.is_action_pressed("active_slot_2"):
+    ActiveManager.fire_slot(1)
+    return
   if event is InputEventScreenTouch:
     if event.pressed:
       is_touching = true

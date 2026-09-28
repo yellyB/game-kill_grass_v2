@@ -33,12 +33,23 @@ scripts/ (뷰)    씬 컨트롤러. 순수 뷰: 표시·연출·입력 수신. �
 | 매니저 signal 방출 (GameManager/ActiveManager/SessionManager/…) | ✅ |
 | UI 팩토리 분리 (GameManager → UIKit) | ✅ Phase 1.5 |
 | 세션 클록 분리 (main.gd → SessionManager) | ✅ Phase 1.5 |
-| 입력 추상화 (PlatformService) | ⏳ Phase 2 |
+| 입력/진동/종료 추상화 (PlatformService) | ✅ Phase 2 |
 | 플랫폼별 UI 씬 세트 + 로더 | ⏳ Phase 3 |
 | 모바일 세로 UI + 터치 백엔드 + 익스포트 | ⏳ Phase 5 |
 
+## PlatformService (Phase 2)
+
+`autoload/platform_service.gd` — 플랫폼 차이를 감추는 서비스.
+- `is_mobile()`, `platform_name()`, `input_backend()`/`uses_touch()` (KEYBOARD_MOUSE | TOUCH)
+- `vibrate(ms)` — 설정 + 모바일일 때만 (데스크톱 자동 무시)
+- `request_quit()` — 앱 종료(모든 `get_tree().quit()`는 이걸 경유)
+
+**입력 규약**: 불연속 게임 액션은 Godot InputMap 액션으로(이식성). 이동=`move_*`, 액티브=`active_slot_1/2`.
+모바일은 HUD 버튼이 같은 `ActiveManager.fire_slot()`을 호출 → 물리 키코드 하드코딩 없음.
+플랫폼 능력 차이(터치 여부/진동/종료)만 PlatformService가 담당.
+
 ## 아직 남은 커플링 (알려진 것)
 
-- `player.gd`가 `KEY_1/2`·`InputEventScreenTouch`를 직접 처리 → Phase 2에서 PlatformService로.
 - UI 씬은 현재 PC(가로) 1벌뿐 → Phase 3에서 플랫폼별 세트로.
+- 터치 드래그 이동은 `player.gd`가 직접 처리(백엔드 무관하게 동작) → Phase 3/5에서 정리 검토.
 - 오디오(SFX/BGM)는 매니저·씬에 혼재 → 뷰/프레젠테이션 관심사, 우선순위 낮음(추후 정리 후보).

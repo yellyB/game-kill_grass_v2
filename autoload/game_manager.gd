@@ -428,9 +428,7 @@ func play_unlock_sound() -> void:
   if not sfx_enabled: return
   _sfx_unlock.play()
 
-func vibrate(duration_ms: int) -> void:
-  if vibration_enabled:
-    Input.vibrate_handheld(duration_ms)
+# 진동은 PlatformService.vibrate로 이전됨(Phase 2). vibration_enabled 설정만 여기 소유.
 
 # 뷰 팩토리(버튼 스타일/코인 라벨/보석 아이콘)는 UIKit(scripts/ui/ui_kit.gd)으로 이전됨(Phase 1.5 디커플).
 # format_number는 순수 문자열 포맷 유틸이라 여기 유지(뷰·시뮬 공용).

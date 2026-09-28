@@ -58,7 +58,7 @@ func set_freeze(seconds: float) -> void:
 func _notification(what: int) -> void:
   if what == NOTIFICATION_WM_CLOSE_REQUEST:
     end_session()
-    get_tree().quit()
+    PlatformService.request_quit()
 
 func start_session() -> void:
   if is_session_active:
@@ -93,4 +93,4 @@ func quit_to_menu() -> void:
 
 func quit_game() -> void:
   end_session()
-  get_tree().quit()
+  PlatformService.request_quit()

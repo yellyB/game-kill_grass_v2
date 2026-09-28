@@ -467,8 +467,7 @@ func _on_fury_changed(value: float) -> void:
 
 # 세션 레벨업 → 파워업 3택 오버레이 표시(구 분노 보스 소환 대체)
 func _on_level_up(_new_level: int) -> void:
-  if OS.has_feature("mobile"):
-    GameManager.vibrate(120)
+  PlatformService.vibrate(120)  # 데스크톱에선 자동 무시
   _flash_fury_bar()
   var selection = preload("res://scenes/ui/powerup_selection.tscn").instantiate()
   get_tree().root.add_child(selection)

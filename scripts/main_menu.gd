@@ -190,7 +190,7 @@ func _on_confirm_dialog_confirmed() -> void:
     SaveManager.reset_all_data()
     update_money_display()
   else:
-    get_tree().quit()
+    PlatformService.request_quit()
 
 func _on_panel_opened() -> void:
   play_btn.disabled = true
