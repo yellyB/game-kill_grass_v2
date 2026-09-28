@@ -54,7 +54,7 @@ func _ready() -> void:
   # 아이템 슬롯 표시
   _setup_item_slots()
 
-  # 열매(아이템 재화) 카운터
+  # 정수(수확의 정수 — 콤보 전용 재화) 카운터
   _setup_token_indicator()
 
 func _process(delta: float) -> void:
@@ -210,7 +210,7 @@ func _setup_token_indicator() -> void:
   c.add_child(_make_token_icon())
   token_label = Label.new()
   token_label.add_theme_font_size_override("font_size", 28)
-  token_label.add_theme_color_override("font_color", Color(1.0, 0.6, 0.4))
+  token_label.add_theme_color_override("font_color", Color(0.6, 0.95, 1.0))  # 정수 = 시안
   token_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
   token_label.add_theme_constant_override("outline_size", 3)
   token_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -220,21 +220,26 @@ func _setup_token_indicator() -> void:
   GameManager.token_changed.connect(_update_token_label)
 
 func _make_token_icon() -> Control:
+  # 정수 = 시안 응축 물방울(씨앗·보석과 색/모양 구별). 뾰족한 위 꼭지 + 둥근 아래.
   var c = Control.new()
   c.custom_minimum_size = Vector2(26, 26)
   c.mouse_filter = Control.MOUSE_FILTER_IGNORE
-  var berry = Polygon2D.new()
-  berry.color = Color(0.9, 0.35, 0.2)
-  var pts: PackedVector2Array = []
-  for i in 12:
-    var a = TAU / 12.0 * i
-    pts.append(Vector2(13 + cos(a) * 8.0, 15 + sin(a) * 9.0))
-  berry.polygon = pts
-  c.add_child(berry)
-  var leaf = Polygon2D.new()
-  leaf.color = Color(0.35, 0.7, 0.3)
-  leaf.polygon = PackedVector2Array([Vector2(13, 5), Vector2(19, 0), Vector2(15, 5)])
-  c.add_child(leaf)
+  var drop = Polygon2D.new()
+  drop.color = Color(0.3, 0.85, 1.0)
+  var pts: PackedVector2Array = [Vector2(13, 3)]  # 위 꼭지
+  for i in 13:
+    var a = deg_to_rad(-45.0 + 270.0 * i / 12.0)  # 위오른쪽 → 아래 → 위왼쪽
+    pts.append(Vector2(13 + cos(a) * 7.0, 16 + sin(a) * 7.0))
+  drop.polygon = pts
+  c.add_child(drop)
+  var hi = Polygon2D.new()  # 광택 하이라이트
+  hi.color = Color(0.85, 1.0, 1.0, 0.7)
+  var hpts: PackedVector2Array = []
+  for i in 8:
+    var a = TAU / 8.0 * i
+    hpts.append(Vector2(10 + cos(a) * 2.2, 14 + sin(a) * 3.0))
+  hi.polygon = hpts
+  c.add_child(hi)
   return c
 
 func _update_token_label(amount: int) -> void:

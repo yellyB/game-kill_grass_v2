@@ -15,10 +15,6 @@ var _ws_selected: int = -1  # Currently highlighted world index in panel
 var _ws_cards_container: VBoxContainer = null
 var _ws_action_btn: Button = null
 var _ws_rune_container: GridContainer = null
-var _shop_btn: Button = null
-var shop_overlay: Control = null
-var _shop_list: VBoxContainer = null
-var _shop_token_label: Label = null
 var _debug_container: HBoxContainer = null
 var _settings_btn: Button = null
 var _settings_overlay: Control = null
@@ -115,14 +111,7 @@ func _ready() -> void:
   _settings_btn.modulate = Color(0.7, 0.7, 0.7)
   padded_area.add_child(_settings_btn)
 
-  # 상점 버튼 (강화 ↔ 종료 사이)
-  _shop_btn = Button.new()
-  _shop_btn.text = "상점"
-  _shop_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-  GameManager.style_button(_shop_btn, "sub", Vector2(460, 112))
-  _shop_btn.pressed.connect(_on_shop_pressed)
-  upgrade_btn.get_parent().add_child(_shop_btn)
-  upgrade_btn.get_parent().move_child(_shop_btn, upgrade_btn.get_index() + 1)
+  # 상점 제거(§3.10: 정수는 콤보 전용 → 액티브 강화에만 소비)
 
   quit_btn.text = "종료"
   quit_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -196,14 +185,12 @@ func _on_panel_opened() -> void:
   upgrade_btn.disabled = true
   quit_btn.disabled = true
   if _settings_btn: _settings_btn.disabled = true
-  if _shop_btn: _shop_btn.disabled = true
 
 func _on_panel_closed() -> void:
   play_btn.disabled = false
   upgrade_btn.disabled = false
   quit_btn.disabled = false
   if _settings_btn: _settings_btn.disabled = false
-  if _shop_btn: _shop_btn.disabled = false
   _update_upgrade_badge()
 
 func update_money_display() -> void:
@@ -328,166 +315,6 @@ func _open_world_select() -> void:
   GameManager.style_button(close_btn, "muted")
   close_center.add_child(close_btn)
 
-# ── 상점 (열매로 아이템 구매) ──
-
-const SHOP_PS = preload("res://scripts/powerup_selection.gd")
-
-func _item_price(weight: int) -> int:
-  # 레어도(가중치) 기반 가격: 커먼 3 / 언커먼·레어 6 / 에픽 12 (열매)
-  if weight >= 10:
-    return 3
-  elif weight >= 4:
-    return 6
-  return 12
-
-func _on_shop_pressed() -> void:
-  GameManager.play_button_click()
-  _open_shop()
-
-func _open_shop() -> void:
-  if shop_overlay != null:
-    return
-  _on_panel_opened()
-  shop_overlay = Control.new()
-  shop_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-  shop_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-  add_child(shop_overlay)
-  var bg = ColorRect.new()
-  bg.color = Color(0.04, 0.07, 0.08, 0.85)
-  bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-  shop_overlay.add_child(bg)
-  var center = CenterContainer.new()
-  center.set_anchors_preset(Control.PRESET_FULL_RECT)
-  shop_overlay.add_child(center)
-  var panel = PanelContainer.new()
-  panel.custom_minimum_size = Vector2(820, 1500)
-  var ps = StyleBoxFlat.new()
-  ps.bg_color = Color(0.09, 0.12, 0.12)
-  ps.set_corner_radius_all(20)
-  ps.set_border_width_all(3)
-  ps.border_color = Color(0.5, 0.35, 0.2)
-  ps.content_margin_left = 30
-  ps.content_margin_right = 30
-  ps.content_margin_top = 40
-  ps.content_margin_bottom = 30
-  panel.add_theme_stylebox_override("panel", ps)
-  center.add_child(panel)
-  var vbox = VBoxContainer.new()
-  vbox.add_theme_constant_override("separation", 12)
-  panel.add_child(vbox)
-  # 헤더 + 열매 잔액
-  var header = Label.new()
-  header.text = "상점"
-  header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-  header.add_theme_font_size_override("font_size", 50)
-  header.add_theme_color_override("font_color", Color.WHITE)
-  vbox.add_child(header)
-  _shop_token_label = Label.new()
-  _shop_token_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-  _shop_token_label.add_theme_font_size_override("font_size", 32)
-  _shop_token_label.add_theme_color_override("font_color", Color(1.0, 0.6, 0.4))
-  vbox.add_child(_shop_token_label)
-  var sep = ColorRect.new()
-  sep.color = Color(0.24, 0.24, 0.32)
-  sep.custom_minimum_size = Vector2(0, 2)
-  vbox.add_child(sep)
-  # 아이템 목록 (스크롤)
-  var scroll = ScrollContainer.new()
-  scroll.custom_minimum_size = Vector2(760, 1150)
-  scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-  vbox.add_child(scroll)
-  _shop_list = VBoxContainer.new()
-  _shop_list.add_theme_constant_override("separation", 10)
-  _shop_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-  scroll.add_child(_shop_list)
-  _refresh_shop()
-  # 닫기
-  var close_btn = Button.new()
-  close_btn.text = "닫기"
-  close_btn.custom_minimum_size = Vector2(420, 84)
-  close_btn.add_theme_font_size_override("font_size", 36)
-  close_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-  close_btn.pressed.connect(_close_shop)
-  GameManager.style_button(close_btn, "muted")
-  vbox.add_child(close_btn)
-
-func _refresh_shop() -> void:
-  if _shop_list == null:
-    return
-  var slots = GameManager.get_item_slots()
-  _shop_token_label.text = "열매 %d  ·  슬롯 %d/%d" % [GameManager.owned_tokens, GameManager.held_items.size(), slots]
-  for c in _shop_list.get_children():
-    c.queue_free()
-  for data in SHOP_PS.POWERUP_DATA:
-    if not data.get("item", false) or not data.get("enabled", true):
-      continue
-    var price = _item_price(int(data.weight))
-    var row = PanelContainer.new()
-    var rs = StyleBoxFlat.new()
-    rs.bg_color = Color(0.14, 0.16, 0.16)
-    rs.set_corner_radius_all(12)
-    rs.content_margin_left = 16
-    rs.content_margin_right = 16
-    rs.content_margin_top = 10
-    rs.content_margin_bottom = 10
-    row.add_theme_stylebox_override("panel", rs)
-    var hb = HBoxContainer.new()
-    hb.add_theme_constant_override("separation", 14)
-    row.add_child(hb)
-    # 아이콘
-    var tex = SHOP_PS.get_powerup_texture(data)
-    var icon = TextureRect.new()
-    icon.custom_minimum_size = Vector2(64, 64)
-    icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-    icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-    if tex:
-      icon.texture = tex
-    else:
-      var cr = ColorRect.new()
-      cr.color = data.color
-      cr.custom_minimum_size = Vector2(64, 64)
-      icon.add_child(cr)
-    hb.add_child(icon)
-    # 이름 + 설명
-    var tv = VBoxContainer.new()
-    tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    var nm = Label.new()
-    nm.text = data.name
-    nm.add_theme_font_size_override("font_size", 32)
-    nm.add_theme_color_override("font_color", Color.WHITE)
-    tv.add_child(nm)
-    var ds = Label.new()
-    ds.text = data.desc
-    ds.add_theme_font_size_override("font_size", 24)
-    ds.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-    ds.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    tv.add_child(ds)
-    hb.add_child(tv)
-    # 구매 버튼
-    var buy = Button.new()
-    buy.text = "%d 열매" % price
-    buy.custom_minimum_size = Vector2(160, 72)
-    buy.add_theme_font_size_override("font_size", 28)
-    var can_buy = GameManager.owned_tokens >= price and GameManager.held_items.size() < slots
-    buy.disabled = not can_buy
-    GameManager.style_button(buy, "main" if can_buy else "muted")
-    buy.pressed.connect(_on_shop_buy.bind(data.type, price))
-    hb.add_child(buy)
-    _shop_list.add_child(row)
-
-func _on_shop_buy(type: String, price: int) -> void:
-  if GameManager.buy_item(type, price):
-    GameManager.play_confirm_click()
-    _refresh_shop()
-
-func _close_shop() -> void:
-  GameManager.play_button_click()
-  if shop_overlay != null:
-    shop_overlay.queue_free()
-    shop_overlay = null
-  _shop_list = null
-  _shop_token_label = null
-  _on_panel_closed()
 
 func _build_rune_bar(parent: VBoxContainer) -> void:
   if GameManager.get_game_level() < 8:

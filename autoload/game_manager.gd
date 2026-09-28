@@ -181,8 +181,8 @@ var compound_bonus: float = 0.0   # 복리 성장: 레벨업마다 누적
 var finale_active: bool = false   # 막판 스퍼트: 제한시간 마지막 10초
 var combo_count: int = 0          # 콤보: 연속 처치 수(풀+정예, 거목 제외)
 var combo_timer: float = 0.0      # 콤보 유지 잔여 시간(0 되면 리셋)
-var combo_score: float = 0.0      # 세션 누적 콤보 점수 → 세션끝 열매 정산
-var session_combo_tokens: int = 0 # 이번 세션 콤보로 정산된 열매(결과 화면 표시용)
+var combo_score: float = 0.0      # 세션 누적 콤보 점수 → 세션끝 정수 정산
+var session_combo_tokens: int = 0 # 이번 세션 콤보로 정산된 정수(결과 화면 표시용)
 signal combo_changed(count: int, mult: float)  # HUD 콤보 표시용
 
 # 액티브(하베스트/올인/씨앗축복/복리/막판) 전 스탯 배율
@@ -241,7 +241,7 @@ func get_combo_window() -> float:
   var ticks = get_skill_total_progress("combo_duration")
   return Balance.COMBO_WINDOW + ticks * Balance.COMBO_WINDOW_PER_TICK
 
-# 세션 종료 시 콤보 누적점수를 열매로 정산(1회). 결과 화면 표시값 반환.
+# 세션 종료 시 콤보 누적점수를 정수로 정산(1회). 결과 화면 표시값 반환.
 func settle_session_combo() -> int:
   session_combo_tokens = Combo.tokens_from_score(combo_score)
   if session_combo_tokens > 0:
@@ -808,8 +808,7 @@ func clear_current_world() -> void:
   add_money(session_boss_reward)
   # 게임 레벨 XP: 거목 처치 = K×√(거목HP)
   add_game_xp(Progression.goomok_xp(w, strength))
-  # 열매(아이템 재화) 보너스: 거목 처치 시 다량(월드 비례)
-  add_token(10 + w * 5)
+  # 정수는 거목에서 지급하지 않음(§3.10: 정수 획득처 = 콤보 뿐). 거목 = 보석/게임XP/코인보너스.
   SaveManager.save_game()
   goomok_cleared.emit()
 
@@ -840,14 +839,17 @@ func get_item_slots() -> int:
     slots += 1
   return mini(slots, 3)
 
-# ── 아이템(즉발 소모품) 슬롯 = 영구 로드아웃 ──
-# 상점에서 열매로 구매 → 슬롯에 보유(영구, 세션 넘어 유지) → 1/2/3 키로 발동(소모).
+# ── (레거시) 아이템 슬롯 = 영구 로드아웃 ──
+# ⚠️ §3.10로 상점/컨테이너 획득 경로 제거됨 → 현재 held_items 유입원 없음(사실상 미사용).
+#    추후 신규 액티브 2종(메테오/소용돌이, 자동충전+정수강화)으로 대체 예정.
 var held_items: Array = []
 signal items_changed(items: Array)
 signal item_acquired(type: String)       # 획득 시 이름 알림용
 signal item_slot_full(type: String)      # 슬롯 가득 차 획득 실패
 
-# ── 열매(아이템 재화) ──
+# ── 정수(수확의 정수 — 콤보 전용 재화, §3.10) ──
+# 획득처 = 콤보 세션끝 정산(settle_session_combo) 뿐. 용도 = 액티브 강화(신규, 추후 구현).
+# (구 상점 buy_item / 거목 지급은 §3.10로 제거)
 var owned_tokens: int = 0
 signal token_changed(amount: int)
 
@@ -856,19 +858,6 @@ func add_token(count: int) -> void:
     return
   owned_tokens += count
   token_changed.emit(owned_tokens)
-
-# 상점 구매: 열매로 아이템을 슬롯에 추가(슬롯 수만큼 보유 제한)
-func buy_item(type: String, price: int) -> bool:
-  if held_items.size() >= get_item_slots():
-    return false
-  if owned_tokens < price:
-    return false
-  owned_tokens -= price
-  token_changed.emit(owned_tokens)
-  held_items.append(type)
-  items_changed.emit(held_items)
-  SaveManager.save_game()
-  return true
 
 # 컨테이너에서 나오는 즉발 아이템 풀 (구현된 것만)
 const ITEM_DROP_POOL: Array = [

@@ -37,7 +37,7 @@ func _process(delta: float) -> void:
 	if _elites.size() < target_elites and _spawn_cooldown <= 0.0:
 		_spawn_elite()
 		_spawn_cooldown = 0.7
-	# 아이템 컨테이너 스폰은 콤보/열매 재편으로 제거됨(P1-4에서 관련 코드 완전 정리)
+	# 아이템 컨테이너 스폰은 §3.10 재편으로 제거됨(정수는 콤보 전용)
 
 func _spawn_elite() -> void:
 	if not is_instance_valid(player):

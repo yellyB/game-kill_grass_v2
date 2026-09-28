@@ -14,11 +14,11 @@ const COIN_COST_MULT := 1.70          # 코인 비용 배수(스킬틱·해금·
 const PU_SEEDS := 10                  # 코인배율 = 랜덤 드래프트 이 횟수 평균
 const POWERUP_GOOMOK_MULT := 1.5      # 거목전 인런 파워업+슬롯 DPS 기여
 
-# ── 콤보(열매) ──  세션 중 연속 처치(풀+정예, 거목 제외) → 누적점수 → 세션끝 열매 정산
+# ── 콤보(정수) ──  세션 중 연속 처치(풀+정예, 거목 제외) → 누적점수 → 세션끝 정수 정산
 const COMBO_WINDOW := 2.5             # 콤보 유지 창(초). 이 시간 내 처치 없으면 콤보 리셋
 const COMBO_MAX_MULT := 3.0           # 처치당 점수 배율 수렴 상한(콤보 무한대 → 이 값)
 const COMBO_HALF_K := 30.0            # 배율이 (상한 절반)에 도달하는 콤보 수(수렴 속도)
-const COMBO_TOKEN_DIV := 200.0        # 세션 누적점수 → 열매 환산(점수 / 이 값 = 열매 개수)
+const COMBO_TOKEN_DIV := 200.0        # 세션 누적점수 → 정수 환산(점수 / 이 값 = 정수 개수)
 const COMBO_WINDOW_PER_TICK := 0.1    # "콤보 지속" 스킬 틱당 콤보 창 연장(초)
 
 # ── 룬(키스톤) 실효값 ──
