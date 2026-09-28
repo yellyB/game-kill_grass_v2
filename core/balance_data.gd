@@ -97,8 +97,9 @@ const GEM_LOCK := {
 static func elite_density(world: int) -> float:
 	return ELITE_DENSITY * (float(SEED_NEED[world]) / float(SEED_NEED[0]))
 
-# ── 액티브(1/2) 시스템 — placeholder 수치(시뮬 Phase 4 튜닝) ──
+# ── 액티브(1/2) 시스템 — 시뮬 검증됨(Phase 4: `python3 sim/balance_sim.py active`) ──
 # 자동 충전 → 만충 시 발동. 강화(정수): 충전 시간 단축 / 효과 크기.
+# 페이싱: 전 액티브 강화(4트랙×5레벨=848정수) 완료 ≈49세션(메테오 ≈42). COMBO_TOKEN_DIV로 조정.
 const ACTIVE_DEFS := [
 	{"id": "meteor", "name": "메테오", "unlock_lv": 1, "charge": 22.0, "effect_base": 30.0},
 	{"id": "vortex", "name": "소용돌이", "unlock_lv": 5, "charge": 18.0, "effect_base": 260.0},
@@ -107,4 +108,4 @@ const ACTIVE_CHARGE_MIN := 6.0          # 충전 시간 하한(수렴)
 const ACTIVE_CHARGE_STEP := 0.88        # 강화 레벨당 충전 시간 배수(수렴형 단축)
 const ACTIVE_EFFECT_STEP := 0.25        # 강화 레벨당 효과 +25%
 const ACTIVE_MAX_UP_LV := 5             # 각 수치(충전/효과) 최대 강화 레벨
-const ACTIVE_UPGRADE_COST := [12, 20, 34, 56, 90]  # 강화 레벨별 정수 비용(placeholder)
+const ACTIVE_UPGRADE_COST := [12, 20, 34, 56, 90]  # 강화 레벨별 정수 비용(트랙당 합 212, 시뮬 검증)

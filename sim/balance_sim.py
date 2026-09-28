@@ -41,6 +41,28 @@ WORLD2_COST    = 100      # (표시용) 월드2 해금 비용
 POWERUP_COIN_MAX_BONUS = 0.4  # (구 근사, USE_POWERUPS=False일 때만) 세션Lv 10에서 +40%
 SPEND_FRAC = 0.6              # 매 세션 보유금의 이 비율은 스킬 재투자, 나머지는 진행(해금/초월) 저축
 
+# ── 콤보 → 정수(수확의 정수) → 액티브 강화 경제 (core/balance_data.gd·combo.gd 미러) ──
+# 상한 금지 원칙: 정수 페이싱은 COMBO_TOKEN_DIV로 조정(수렴형 배율은 그대로).
+COMBO_MAX_MULT   = 3.0     # 처치당 점수 배율 수렴 상한(콤보→∞)
+COMBO_HALF_K     = 30.0    # 배율이 (상한 절반) 도달하는 콤보 수
+COMBO_TOKEN_DIV  = 200.0   # 세션 누적점수 → 정수(점수/이 값). ★페이싱 튜닝 노브
+ACTIVE_UPGRADE_COST = [12, 20, 34, 56, 90]  # 강화 레벨별 정수 비용(트랙당 합 212)
+ACTIVE_MAX_UP_LV = 5
+VORTEX_UNLOCK_GLEVEL = 5   # 소용돌이(슬롯2) 해금 게임레벨 → 강화 개방 시점
+
+def _H(x):  # 조화수 근사 (콤보 점수 닫힌형)
+    return math.log(x)+0.5772156649+1.0/(2*x)-1.0/(12*x*x)
+
+def combo_score(N):
+    """세션 N처치 연속 콤보의 누적점수 = Σ_{c=1..N} multiplier(c). (콤보 창 유지 가정=활발한 예초)"""
+    if N<=0: return 0.0
+    K=COMBO_HALF_K; cap=COMBO_MAX_MULT-1.0
+    sum_frac = N - K*(_H(N+K)-_H(K))     # Σ c/(c+K)
+    return N + cap*sum_frac
+
+def combo_tokens(N):
+    return int(math.floor(combo_score(N)/COMBO_TOKEN_DIV))
+
 # ── 파워업(인런) 모델 ──
 USE_POWERUPS   = True    # True=33종 파워업 드래프트+스탯 수정자 모델, False=구 coin_mult 근사
 PU_SEEDS       = 10      # 파워업 코인 배율 = 이 횟수만큼 랜덤 드래프트 평균 (상한 없음 — 밸런스는 코인비용으로)
@@ -876,10 +898,68 @@ def scn_full(verbose=False):
     print(f"  전 스킬 맥스 = {skill_done}세션 (스킬맥스율 {skill_max_pct(st):.0f}%)")
     print(f"  총 {sessions}세션 | 보석 획득총량≈{gems+sum(GEM_LOCK[s][l] for (s,l) in gem_unlocked)} | 게임레벨 {game_level(len(cleared))}")
 
+def scn_active():
+    """콤보→정수→액티브 강화 페이싱. 목표: 전 액티브 강화 완료 ≈ 50세션."""
+    TRACKS=[("메테오","charge",0),("메테오","effect",0),("소용돌이","charge",1),("소용돌이","effect",1)]
+    lv={i:0 for i in range(len(TRACKS))}   # 트랙별 강화 레벨
+    def total_cost(): return len(TRACKS)*sum(ACTIVE_UPGRADE_COST)
+    def all_done(): return all(lv[i]>=ACTIVE_MAX_UP_LV for i in range(len(TRACKS)))
+    def meteor_done(): return lv[0]>=ACTIVE_MAX_UP_LV and lv[1]>=ACTIVE_MAX_UP_LV
+    def spend(bank, glevel):
+        # 메뉴 플레이어처럼: 해금된 트랙 중 다음 강화가 가장 싼 것부터 구매(정수 소진까지)
+        while True:
+            best=None
+            for i,(_,_,slot) in enumerate(TRACKS):
+                if lv[i]>=ACTIVE_MAX_UP_LV: continue
+                if slot==1 and glevel<VORTEX_UNLOCK_GLEVEL: continue  # 소용돌이 해금 전
+                c=ACTIVE_UPGRADE_COST[lv[i]]
+                if c>bank: continue
+                if best is None or c<best[1]: best=(i,c)
+            if best is None: break
+            lv[best[0]]+=1; bank-=best[1]
+        return bank
+
+    st={}; money=0; gems=0; gem_unlocked=set()
+    unlocked={0}; trans=[0]*7; cleared=set()
+    sessions=0; bank=0; tok_total=0; meteor_at=None; all_at=None
+    tokens_hist=[]
+    print(f"── 액티브 페이싱 (콤보→정수→강화) ──  총 강화비용={total_cost()}정수 (4트랙×{sum(ACTIVE_UPGRADE_COST)})  TOKEN_DIV={COMBO_TOKEN_DIV}")
+    while sessions<5000 and not all_at:
+        sessions+=1
+        w=max(unlocked, key=lambda x: simulate_session(st,x,trans[x])[0])
+        coins, kills = simulate_session(st,w,trans[w])
+        money+=coins
+        # 콤보 정수(세션)
+        tk=combo_tokens(kills); bank+=tk; tok_total+=tk; tokens_hist.append(tk)
+        # 스킬 재투자 + 진행(scn_full과 동일 경제)
+        budget=money*SPEND_FRAC
+        left,gems=buy_full(st,budget,gems,gem_unlocked, goomok_hp_at(w,trans[w]), w); money-=(budget-left)
+        for w2 in list(unlocked):
+            L=trans[w2]
+            if (w2,L) not in cleared and can_clear_at(st,w2,L): cleared.add((w2,L)); gems+=gem_drop(w2,L)
+        nw=max(unlocked)+1
+        if nw<7 and can_clear_at(st,nw,0) and money>=unlock_cost(nw): money-=unlock_cost(nw); unlocked.add(nw)
+        if len(unlocked)>=5:
+            cand=[(trans_cost(w2,trans[w2]),w2) for w2 in unlocked
+                  if trans[w2]<MAX_TRANS and can_clear_at(st,w2,trans[w2]+1)]
+            cand=[c for c in cand if c[0]<=money]
+            if cand: c,w2=min(cand); money-=c; trans[w2]+=1
+        # 정수로 액티브 강화 구매
+        gl=game_level(len(cleared))
+        bank=spend(bank, gl)
+        if meteor_at is None and meteor_done(): meteor_at=sessions
+        if all_at is None and all_done(): all_at=sessions
+        if sessions%10==0 or sessions<=5:
+            avg=sum(tokens_hist[-10:])/min(len(tokens_hist),10)
+            print(f"  S{sessions:3d}: 처치≈{kills:6.0f} 정수+{tk:2d}(최근평균{avg:.1f}) 누적{tok_total:4d} 잔액{bank:3d} GL{gl} 강화{[lv[i] for i in range(4)]}")
+    print(f"\n  메테오(2트랙) 완료 = {meteor_at}세션")
+    print(f"  전 액티브(4트랙) 완료 = {all_at}세션  ← 목표 ≈50")
+    print(f"  총 획득 정수={tok_total}, 세션당 평균={tok_total/max(1,sessions):.1f}")
+
 if __name__=="__main__":
     ap=argparse.ArgumentParser(description="v2 밸런싱 시뮬")
     ap.add_argument("scenario", nargs="?", default="full",
-                    choices=["session","pacing","progression","full","tune","powerups","goomok","runes","glevel","watch","slevel"])
+                    choices=["session","pacing","progression","full","tune","powerups","goomok","runes","glevel","watch","slevel","active"])
     a=ap.parse_args()
     {"session":scn_session,"pacing":scn_pacing,"progression":scn_progression,
-     "full":scn_full,"tune":scn_tune,"powerups":scn_powerups,"goomok":scn_goomok,"runes":scn_runes,"glevel":scn_glevel,"watch":scn_watch,"slevel":scn_slevel}[a.scenario]()
+     "full":scn_full,"tune":scn_tune,"powerups":scn_powerups,"goomok":scn_goomok,"runes":scn_runes,"glevel":scn_glevel,"watch":scn_watch,"slevel":scn_slevel,"active":scn_active}[a.scenario]()
