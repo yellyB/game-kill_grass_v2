@@ -47,14 +47,6 @@ func setup_seed(p_target: Node2D) -> void:
 	is_seed = true
 	target = p_target
 
-var is_token: bool = false
-var token_amount: int = 1
-
-func setup_token(p_amount: int, p_target: Node2D) -> void:
-	is_token = true
-	token_amount = p_amount
-	target = p_target
-
 var is_item_drop: bool = false
 var item_drop_type: String = ""
 
@@ -73,8 +65,6 @@ func _ready() -> void:
 		_build_key_visual()
 	elif is_seed:
 		_build_seed_visual()
-	elif is_token:
-		_build_token_visual()
 	elif is_item_drop:
 		_build_item_visual()
 	elif is_gem:
@@ -212,27 +202,6 @@ func _build_item_visual() -> void:
 			var s = 30.0 / maxdim
 			sprite.scale = Vector2(s, s)
 
-func _build_token_visual() -> void:
-	# 열매: 붉은/주황 둥근 열매 + 잎사귀 꼭지
-	if sprite:
-		sprite.visible = false
-	var berry = Polygon2D.new()
-	berry.color = Color(0.9, 0.35, 0.2)
-	var pts: PackedVector2Array = []
-	for i in 14:
-		var a = TAU / 14.0 * i
-		pts.append(Vector2(cos(a) * 11.0, sin(a) * 12.0 + 2.0))
-	berry.polygon = pts
-	add_child(berry)
-	var hl = Polygon2D.new()
-	hl.color = Color(1.0, 0.6, 0.4, 0.7)
-	hl.polygon = PackedVector2Array([Vector2(-4, -6), Vector2(1, -9), Vector2(2, -4), Vector2(-3, -2)])
-	add_child(hl)
-	var leaf = Polygon2D.new()
-	leaf.color = Color(0.35, 0.7, 0.3)
-	leaf.polygon = PackedVector2Array([Vector2(0, -10), Vector2(7, -16), Vector2(3, -11), Vector2(0, -12)])
-	add_child(leaf)
-
 func _build_seed_visual() -> void:
 	# 씨앗: 물방울형 갈색 씨앗 + 초록 새싹
 	if sprite:
@@ -293,8 +262,6 @@ func _collect() -> void:
 		GameManager.add_key(key_world_index)
 	elif is_seed:
 		GameManager.add_seed()
-	elif is_token:
-		GameManager.add_token(token_amount)
 	elif is_item_drop:
 		GameManager.add_item(item_drop_type)
 	elif is_gem:

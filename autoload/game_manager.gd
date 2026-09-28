@@ -859,17 +859,6 @@ func add_token(count: int) -> void:
   owned_tokens += count
   token_changed.emit(owned_tokens)
 
-# 컨테이너에서 나오는 즉발 아이템 풀 (구현된 것만)
-const ITEM_DROP_POOL: Array = [
-  "extra_time", "gold_rush", "overdrive", "golden_bloom", "double_or_nothing",
-  "harvest_madness", "field_clear", "blackhole", "heavy_blade", "all_in",
-  "growth_spurt", "instant_level", "uproot", "lightning_mow", "time_freeze",
-  "fertilizer", "golden_rain",
-]
-
-func random_item_type() -> String:
-  return ITEM_DROP_POOL[randi() % ITEM_DROP_POOL.size()]
-
 func add_item(type: String) -> bool:
   if held_items.size() >= get_item_slots():
     item_slot_full.emit(type)  # 슬롯 가득 → 획득 실패 알림
