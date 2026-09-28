@@ -60,9 +60,16 @@ func _ready() -> void:
   # 액티브(1/2) 충전 게이지
   _setup_active_gauges()
 
+  # 콤보 미터 (중앙 상단)
+  _setup_combo_meter()
+  GameManager.combo_changed.connect(_on_combo_changed)
+
 func _process(delta: float) -> void:
   # Update timed buff countdowns
   _update_buff_timers()
+
+  # 콤보 잔여 시간바
+  _update_combo_timer_bar()
 
   # Smooth money counter
   if displayed_money != target_money:
@@ -299,6 +306,84 @@ func _setup_active_gauges() -> void:
     _update_active_gauge(id, ActiveManager.get_charge(id))
   ActiveManager.charge_changed.connect(_update_active_gauge)
   ActiveManager.active_ready.connect(_on_active_ready)
+
+# ── 콤보 미터 (중앙 상단) ──
+var _combo_count_label: Label = null
+var _combo_mult_label: Label = null
+var _combo_timer_bar: ProgressBar = null
+var _combo_root: Control = null
+
+func _setup_combo_meter() -> void:
+  _combo_root = Control.new()
+  _combo_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+  _combo_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+  _combo_root.modulate.a = 0.0  # 콤보 없을 땐 숨김
+  add_child(_combo_root)
+
+  # 콤보 숫자 (큰 글씨, 상단 중앙)
+  _combo_count_label = Label.new()
+  _combo_count_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+  _combo_count_label.offset_top = 92.0
+  _combo_count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+  _combo_count_label.add_theme_font_size_override("font_size", 52)
+  _combo_count_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+  _combo_count_label.add_theme_color_override("font_outline_color", Color(0.2, 0.05, 0.0))
+  _combo_count_label.add_theme_constant_override("outline_size", 6)
+  _combo_count_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+  _combo_count_label.pivot_offset = Vector2(0, 0)
+  _combo_root.add_child(_combo_count_label)
+
+  # 배율 표시
+  _combo_mult_label = Label.new()
+  _combo_mult_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+  _combo_mult_label.offset_top = 150.0
+  _combo_mult_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+  _combo_mult_label.add_theme_font_size_override("font_size", 24)
+  _combo_mult_label.add_theme_color_override("font_color", Color(1.0, 0.95, 0.7))
+  _combo_mult_label.add_theme_color_override("font_outline_color", Color(0.2, 0.05, 0.0))
+  _combo_mult_label.add_theme_constant_override("outline_size", 4)
+  _combo_mult_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+  _combo_root.add_child(_combo_mult_label)
+
+  # 잔여 시간바 (중앙)
+  _combo_timer_bar = ProgressBar.new()
+  _combo_timer_bar.anchor_left = 0.5
+  _combo_timer_bar.anchor_right = 0.5
+  _combo_timer_bar.anchor_top = 0.0
+  _combo_timer_bar.anchor_bottom = 0.0
+  _combo_timer_bar.offset_left = -90.0
+  _combo_timer_bar.offset_right = 90.0
+  _combo_timer_bar.offset_top = 186.0
+  _combo_timer_bar.offset_bottom = 196.0
+  _combo_timer_bar.min_value = 0.0
+  _combo_timer_bar.max_value = 1.0
+  _combo_timer_bar.show_percentage = false
+  _combo_timer_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+  _combo_root.add_child(_combo_timer_bar)
+
+func _on_combo_changed(count: int, mult: float) -> void:
+  if _combo_root == null:
+    return
+  if count <= 0:
+    var tw0 = create_tween()
+    tw0.tween_property(_combo_root, "modulate:a", 0.0, 0.25)
+    return
+  _combo_count_label.text = "%d 콤보" % count
+  _combo_mult_label.text = "x%.2f" % mult
+  _combo_root.modulate.a = 1.0
+  # 팝 애니메이션
+  _combo_count_label.pivot_offset = _combo_count_label.size * 0.5
+  var tw = create_tween()
+  tw.tween_property(_combo_count_label, "scale", Vector2(1.25, 1.25), 0.06)
+  tw.tween_property(_combo_count_label, "scale", Vector2(1.0, 1.0), 0.1)
+
+func _update_combo_timer_bar() -> void:
+  if _combo_timer_bar == null:
+    return
+  if GameManager.combo_count <= 0:
+    return
+  var win = GameManager.get_combo_window()
+  _combo_timer_bar.value = clampf(GameManager.combo_timer / win, 0.0, 1.0) if win > 0.0 else 0.0
 
 func _update_active_gauge(id: String, ratio: float) -> void:
   if not _active_rows.has(id):
