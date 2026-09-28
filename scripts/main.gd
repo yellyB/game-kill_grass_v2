@@ -1,6 +1,6 @@
 extends Node2D
 
-const SESSION_TIME: float = 45.0
+# SESSION_TIME은 SessionManager가 소유(세션 클록 SSOT)
 
 const BGM_PATHS: Array = [
   "res://resources/sounds/bgm_슬라임늪.ogg",          # 0: 슬라임 늪
@@ -26,11 +26,7 @@ const BGM_PATHS: Array = [
 @onready var timer_label: Label = $HUD/PaddedArea/TimerHBox/TimerLabel
 @onready var timer_progress: ProgressBar = $HUD/PaddedArea/TimerHBox/TimerProgressBar
 
-var session_time_remaining: float = SESSION_TIME + GameManager.get_session_time_bonus()
-var session_total_time: float = SESSION_TIME + GameManager.get_session_time_bonus()
 var session_ended: bool = false
-var _freeze_timer: float = 0.0  # 시간 정지 아이템
-var session_ready: bool = false
 var bgm_player: AudioStreamPlayer
 var _tick_sfx: AudioStreamPlayer = null
 var _last_tick_second: int = -1
@@ -66,8 +62,12 @@ func _ready() -> void:
   # 거목 처치 → 월드 클리어 → 세션 종료
   GameManager.goomok_cleared.connect(_on_goomok_cleared)
 
-  # 시간 정지 아이템
-  GameManager.time_freeze_requested.connect(func(d): _freeze_timer = d)
+  # 시간 정지 아이템 → 세션 클록에 위임
+  GameManager.time_freeze_requested.connect(SessionManager.set_freeze)
+
+  # 세션 클록(공유 로직) 구독: 표시/연출은 뷰가 담당
+  SessionManager.time_changed.connect(_on_time_changed)
+  SessionManager.session_time_up.connect(end_session)
 
   # Style progress bar
   var bg_style = StyleBoxFlat.new()
@@ -79,52 +79,42 @@ func _ready() -> void:
   fill_style.set_corner_radius_all(6)
   timer_progress.add_theme_stylebox_override("fill", fill_style)
 
-  # Initialize timer display
-  update_timer_display()
-
   SessionManager.start_session()
 
-  # 1초 후 세션 시작
-  get_tree().create_timer(1.0).timeout.connect(_on_session_ready)
+  # Initialize timer display (클록 초기값)
+  update_timer_display(SessionManager.time_remaining, SessionManager.total_time)
+
+  # 1초 후 세션 클록 개시
+  get_tree().create_timer(1.0).timeout.connect(SessionManager.set_clock_ready)
 
   # Start BGM
   _start_bgm()
 
-func _process(delta: float) -> void:
-  if session_ended or not session_ready:
+# 세션 클록 tick(뷰): 표시 + 화면 흔들림 + 틱톡 효과음
+func _on_time_changed(remaining: float, total: float) -> void:
+  if session_ended:
     return
 
-  # 시간 정지: 타이머만 멈추고 수확은 계속
-  if _freeze_timer > 0.0:
-    _freeze_timer -= delta
-  else:
-    session_time_remaining -= delta
-  # 막판 스퍼트: 제한시간 마지막 10초
-  GameManager.finale_active = session_time_remaining <= 10.0
-  if session_time_remaining <= 0:
-    session_time_remaining = 0
-    end_session()
-
   # 종료 5초 전부터 화면 흔들림
-  if session_time_remaining <= 5.0 and session_time_remaining > 0:
-    var intensity = (5.0 - session_time_remaining) / 5.0 * 0.4
+  if remaining <= 5.0 and remaining > 0:
+    var intensity = (5.0 - remaining) / 5.0 * 0.4
     camera.shake(intensity)
 
   # 종료 10초 전부터 1초마다 틱톡 효과음
-  if session_time_remaining <= 10.0 and session_time_remaining > 0:
-    var sec = int(ceil(session_time_remaining))
+  if remaining <= 10.0 and remaining > 0:
+    var sec = int(ceil(remaining))
     if sec != _last_tick_second:
       _last_tick_second = sec
       _play_tick()
 
-  update_timer_display()
+  update_timer_display(remaining, total)
 
-func update_timer_display() -> void:
-  var seconds = int(ceil(session_time_remaining))
+func update_timer_display(remaining: float, total: float) -> void:
+  var seconds = int(ceil(remaining))
   timer_label.text = str(seconds)
 
   # Update progress bar
-  timer_progress.value = clampf((session_time_remaining / session_total_time) * 100.0, 0.0, 100.0)
+  timer_progress.value = clampf((remaining / total) * 100.0, 0.0, 100.0) if total > 0.0 else 0.0
 
   # Change color when time is low (apply once)
   if seconds <= 10 and not _timer_warning_applied:
@@ -160,6 +150,7 @@ func _start_bgm() -> void:
 
 func end_session() -> void:
   session_ended = true
+  SessionManager.stop_clock()
   get_tree().paused = true
   back_to_menu_btn.visible = false
 
@@ -509,9 +500,6 @@ func _notification(what: int) -> void:
     else:
       _on_back_to_menu_pressed()
 
-func _on_session_ready() -> void:
-  session_ready = true
-
 func _on_back_to_menu_pressed() -> void:
   GameManager.play_button_click()
   confirm_dialog.show_dialog("첫 화면으로 돌아갈까요?", "처음으로", "게임 계속하기", true)
@@ -539,6 +527,7 @@ func _on_goomok_cleared() -> void:
 
 func _boss_end_session() -> void:
   session_ended = true
+  SessionManager.stop_clock()
   get_tree().paused = true
   back_to_menu_btn.visible = false
 
@@ -559,5 +548,4 @@ func _boss_end_session() -> void:
   show_session_end_overlay(earnings)
 
 func _on_extra_time(seconds: float) -> void:
-  session_time_remaining += seconds
-  session_total_time += seconds
+  SessionManager.add_time(seconds)
