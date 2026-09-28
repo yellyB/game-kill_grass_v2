@@ -9,4 +9,5 @@ func _ready() -> void:
 		w.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
 		w.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP_WIDTH
 		w.content_scale_size = Vector2i(1080, 1920)
+		w.content_scale_factor = 1.0  # PC 전역 배율(0.6) 무시 — 원본 세로는 1.0
 	UIRouter.goto.call_deferred("main_menu")
