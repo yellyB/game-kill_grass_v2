@@ -17,8 +17,6 @@ var perm_buff_icons: Array = []  # ordered list of icons
 func _ready() -> void:
   GameManager.session_money_changed.connect(_on_session_money_changed)
   GameManager.powerup_acquired.connect(_on_powerup_acquired)
-  GameManager.item_acquired.connect(_on_item_acquired)
-  GameManager.item_slot_full.connect(_on_item_slot_full)
   GameManager.timed_buff_started.connect(_on_timed_buff_started)
   GameManager.timed_buff_ended.connect(_on_timed_buff_ended)
 
@@ -50,9 +48,6 @@ func _ready() -> void:
 
   # 씨앗 / 거목 진행 표시
   _setup_seed_indicator()
-
-  # 아이템 슬롯 표시
-  _setup_item_slots()
 
   # 정수(수확의 정수 — 콤보 전용 재화) 카운터
   _setup_token_indicator()
@@ -436,57 +431,6 @@ func _on_goomok_ready_hud() -> void:
 
 # ── 아이템 슬롯 ──
 
-var item_slots_container: HBoxContainer = null
-
-func _setup_item_slots() -> void:
-  item_slots_container = HBoxContainer.new()
-  item_slots_container.position = Vector2(0, 150)
-  item_slots_container.add_theme_constant_override("separation", 8)
-  item_slots_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
-  padded_area.add_child(item_slots_container)
-  GameManager.items_changed.connect(_refresh_item_slots)
-  _refresh_item_slots(GameManager.held_items)
-
-func _refresh_item_slots(items: Array) -> void:
-  if item_slots_container == null:
-    return
-  for c in item_slots_container.get_children():
-    c.queue_free()
-  var slots = GameManager.get_item_slots()
-  var PowerupSelection = preload("res://scripts/powerup_selection.gd")
-  for i in range(slots):
-    var slot = Panel.new()
-    slot.custom_minimum_size = Vector2(52, 52)
-    slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    var sb = StyleBoxFlat.new()
-    sb.bg_color = Color(0.15, 0.15, 0.15, 0.55)
-    sb.set_corner_radius_all(8)
-    sb.set_border_width_all(2)
-    sb.border_color = Color(0.5, 0.5, 0.5, 0.6)
-    slot.add_theme_stylebox_override("panel", sb)
-    if i < items.size():
-      var data = PowerupSelection.get_powerup_data_by_type(items[i])
-      var tex = PowerupSelection.get_powerup_texture(data) if not data.is_empty() else null
-      if tex:
-        var icon = TextureRect.new()
-        icon.texture = tex
-        icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-        icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-        icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-        icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-        slot.add_child(icon)
-    # 슬롯 번호(1/2/3) 라벨 — 어떤 키로 쓰는지 표시
-    var num = Label.new()
-    num.text = str(i + 1)
-    num.add_theme_font_size_override("font_size", 20)
-    num.add_theme_color_override("font_color", Color(1, 1, 1, 0.9))
-    num.add_theme_color_override("font_outline_color", Color(0, 0, 0))
-    num.add_theme_constant_override("outline_size", 3)
-    num.position = Vector2(4, 0)
-    num.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    slot.add_child(num)
-    item_slots_container.add_child(slot)
-
 func _setup_fury_bar() -> void:
   fury_progress.max_value = 100.0
   fury_progress.value = 0.0
@@ -629,13 +573,6 @@ func _setup_notif_container() -> void:
   _notif_container.add_theme_constant_override("separation", 6)
   _notif_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
   padded_area.add_child(_notif_container)
-
-# 아이템 획득 시: 어떤 아이템인지 이름+아이콘 알림 (슬롯 저장됨)
-func _on_item_acquired(type: String) -> void:
-  _show_powerup_notification(type, 0, "획득! ")
-
-func _on_item_slot_full(type: String) -> void:
-  _show_powerup_notification(type, 0, "슬롯 가득! ")
 
 func _show_powerup_notification(type: String, level: int, prefix: String = "") -> void:
   if not _notif_container:
