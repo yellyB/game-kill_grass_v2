@@ -47,6 +47,9 @@ static func create_gem_icon(icon_size: int, tint: Color = Color(0.9, 0.2, 0.4)) 
 	var container = Control.new()
 	container.custom_minimum_size = Vector2(icon_size, icon_size)
 	container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# 컨테이너(HBox 등)에서 세로로 늘어나면 폴리곤이 위쪽(0~size)에 그려져 아이콘이 위로 뜬다.
+	# 코인 아이콘(SHRINK_CENTER)과 동일하게 세로 중앙 고정 → 숫자와 정렬 맞춤.
+	container.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var cx = icon_size * 0.5
 	var cy = icon_size * 0.5
 	var sx = icon_size * 0.38
