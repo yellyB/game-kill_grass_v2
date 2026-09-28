@@ -331,6 +331,24 @@ func show_session_end_overlay(earnings: int) -> void:
     info_block.add_child(gem_container)
     fade_rows.append(gem_container)
 
+  # 콤보 → 정수 정산 (수확의 정수, 시안)
+  if GameManager.session_combo_tokens > 0:
+    var token_container = HBoxContainer.new()
+    token_container.add_theme_constant_override("separation", 6)
+    token_container.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+    token_container.modulate = Color(1, 1, 1, 0)
+
+    var token_count = Label.new()
+    token_count.text = "콤보 보상: 정수 +%d" % GameManager.session_combo_tokens
+    token_count.add_theme_font_size_override("font_size", 34)
+    token_count.add_theme_color_override("font_color", Color(0.4, 0.9, 1.0))
+    token_count.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+    token_count.add_theme_constant_override("outline_size", 4)
+    token_container.add_child(token_count)
+
+    info_block.add_child(token_container)
+    fade_rows.append(token_container)
+
   # 게임 레벨 (계정 메타)
   var glevel_label = Label.new()
   glevel_label.text = "게임 레벨 Lv.%d" % GameManager.get_game_level()
