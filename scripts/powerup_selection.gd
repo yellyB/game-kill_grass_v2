@@ -47,24 +47,25 @@ const POWERUP_DATA = [
   {"type": "luck", "name": "행운의 편자", "desc": "레어 이상 등장 확률 증가", "color": Color(0.9, 0.9, 0.4), "image": "", "stackable": true, "item": false, "weight": 4, "enabled": true},
   {"type": "snowball", "name": "눈덩이", "desc": "풀 100개마다 공격력 +2% (세션 내)", "color": Color(0.8, 0.9, 1.0), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": true},
   {"type": "compound", "name": "복리 성장", "desc": "레벨업마다 전 스탯 소폭 영구 증가", "color": Color(0.9, 0.7, 1.0), "image": "", "stackable": false, "item": false, "weight": 1, "enabled": true},
-  # ── 아이템 (item:true = 액티브 슬롯 후보 / P1-3에서 5종은 파워업 복귀, 2종 보류 enabled:false) ──
-  {"type": "gold_rush", "name": "골드 러시", "desc": "10초간 코인 가치 2배", "color": Color(1.0, 0.85, 0.0), "image": "골드러시.png", "stackable": false, "item": true, "weight": 10, "enabled": true},
-  {"type": "blackhole", "name": "블랙홀", "desc": "드롭 코인 즉시 흡수", "color": Color(0.2, 0.0, 0.4), "image": "블랙홀.png", "stackable": false, "item": true, "weight": 10, "enabled": true},
-  {"type": "golden_bloom", "name": "골든 블룸", "desc": "주변 풀을 황금풀로", "color": Color(1.0, 0.9, 0.2), "image": "골든블룸.png", "stackable": false, "item": true, "weight": 10, "enabled": false},  # P1-3 보류
-  {"type": "overdrive", "name": "오버드라이브", "desc": "10초간 공속 2배, 이속 -30%", "color": Color(1.0, 0.3, 0.5), "image": "오버드라이브.png", "stackable": false, "item": true, "weight": 10, "enabled": true},
-  {"type": "heavy_blade", "name": "강철 심", "desc": "10초간 공격력 +80%, 공속 -20%", "color": Color(0.7, 0.4, 0.3), "image": "", "stackable": false, "item": true, "weight": 10, "enabled": true},
-  {"type": "harvest_madness", "name": "하베스트 매드니스", "desc": "8초간 모든 스탯 대폭 증가", "color": Color(1.0, 0.5, 1.0), "image": "하베스트매드니스.png", "stackable": false, "item": true, "weight": 4, "enabled": true},
-  {"type": "field_clear", "name": "필드 클리어", "desc": "맵 전체 풀 즉시 클리어", "color": Color(0.3, 1.0, 0.3), "image": "필드클리어.png", "stackable": false, "item": true, "weight": 1, "enabled": true},
-  {"type": "growth_spurt", "name": "그로스 스퍼트", "desc": "레벨업 게이지 35% 충전", "color": Color(0.9, 0.6, 0.9), "image": "몬스터퓨리.png", "stackable": false, "item": false, "weight": 10, "enabled": true},
+  # ── 구 즉발 17종 (§3.10): 14종 레벨업 파워업 복귀(item:false) / 3종 보류(enabled:false). "item:true=슬롯후보" 개념 폐기 ──
+  {"type": "gold_rush", "name": "골드 러시", "desc": "10초간 코인 가치 2배", "color": Color(1.0, 0.85, 0.0), "image": "골드러시.png", "stackable": false, "item": false, "weight": 10, "enabled": true},
+  {"type": "blackhole", "name": "블랙홀", "desc": "드롭 코인 즉시 흡수", "color": Color(0.2, 0.0, 0.4), "image": "블랙홀.png", "stackable": false, "item": false, "weight": 10, "enabled": true},
+  {"type": "golden_bloom", "name": "골든 블룸", "desc": "주변 풀을 황금풀로", "color": Color(1.0, 0.9, 0.2), "image": "골든블룸.png", "stackable": false, "item": false, "weight": 10, "enabled": true},
+  {"type": "overdrive", "name": "오버드라이브", "desc": "10초간 공속 2배, 이속 -30%", "color": Color(1.0, 0.3, 0.5), "image": "오버드라이브.png", "stackable": false, "item": false, "weight": 10, "enabled": true},
+  {"type": "heavy_blade", "name": "강철 심", "desc": "10초간 공격력 +80%, 공속 -20%", "color": Color(0.7, 0.4, 0.3), "image": "", "stackable": false, "item": false, "weight": 10, "enabled": true},
+  {"type": "harvest_madness", "name": "하베스트 매드니스", "desc": "8초간 모든 스탯 대폭 증가", "color": Color(1.0, 0.5, 1.0), "image": "하베스트매드니스.png", "stackable": false, "item": false, "weight": 4, "enabled": true},
+  {"type": "field_clear", "name": "필드 클리어", "desc": "맵 전체 풀 즉시 클리어", "color": Color(0.3, 1.0, 0.3), "image": "필드클리어.png", "stackable": false, "item": false, "weight": 1, "enabled": true},
   {"type": "extra_time", "name": "엑스트라 타임", "desc": "세션 시간 +5초", "color": Color(0.4, 1.0, 0.4), "image": "엑스트라타임.png", "stackable": false, "item": false, "weight": 10, "enabled": true},
   {"type": "double_or_nothing", "name": "더블 오어 낫싱", "desc": "50% 코인 2배 / 50% 전부 잃음", "color": Color(0.8, 0.2, 0.8), "image": "더블오어더스트.png", "stackable": false, "item": false, "weight": 10, "enabled": true},
-  {"type": "all_in", "name": "올인", "desc": "8초간 전 스탯 +80%", "color": Color(0.9, 0.3, 0.5), "image": "", "stackable": false, "item": true, "weight": 4, "enabled": true},
-  {"type": "instant_level", "name": "즉시 레벨업", "desc": "즉시 레벨업 1회", "color": Color(0.7, 0.9, 1.0), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": true},
-  {"type": "uproot", "name": "뿌리 뽑기", "desc": "거목/정예에 즉시 큰 피해", "color": Color(0.6, 0.4, 0.2), "image": "", "stackable": false, "item": true, "weight": 4, "enabled": false},  # P1-3 보류
-  {"type": "lightning_mow", "name": "번개 벌초", "desc": "랜덤 다수 풀 즉시 처치", "color": Color(0.8, 0.9, 1.0), "image": "", "stackable": false, "item": true, "weight": 10, "enabled": true},
-  {"type": "time_freeze", "name": "시간 정지", "desc": "타이머 잠깐 정지, 수확 계속", "color": Color(0.6, 0.8, 1.0), "image": "", "stackable": false, "item": true, "weight": 4, "enabled": true},
+  {"type": "all_in", "name": "올인", "desc": "8초간 전 스탯 +80%", "color": Color(0.9, 0.3, 0.5), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": true},
+  {"type": "lightning_mow", "name": "번개 벌초", "desc": "랜덤 다수 풀 즉시 처치", "color": Color(0.8, 0.9, 1.0), "image": "", "stackable": false, "item": false, "weight": 10, "enabled": true},
+  {"type": "time_freeze", "name": "시간 정지", "desc": "타이머 잠깐 정지, 수확 계속", "color": Color(0.6, 0.8, 1.0), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": true},
   {"type": "fertilizer", "name": "거름 살포", "desc": "짧은 시간 풀 재생·밀도 폭증", "color": Color(0.5, 0.8, 0.3), "image": "", "stackable": false, "item": false, "weight": 10, "enabled": true},
-  {"type": "golden_rain", "name": "황금비", "desc": "잠깐 코인·황금풀이 쏟아짐", "color": Color(1.0, 0.9, 0.3), "image": "", "stackable": false, "item": true, "weight": 4, "enabled": true},
+  {"type": "golden_rain", "name": "황금비", "desc": "잠깐 코인·황금풀이 쏟아짐", "color": Color(1.0, 0.9, 0.3), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": true},
+  # 보류 3종 (§3.10): enabled:false → 3택 풀 제외
+  {"type": "growth_spurt", "name": "그로스 스퍼트", "desc": "레벨업 게이지 35% 충전", "color": Color(0.9, 0.6, 0.9), "image": "몬스터퓨리.png", "stackable": false, "item": false, "weight": 10, "enabled": false},
+  {"type": "instant_level", "name": "즉시 레벨업", "desc": "즉시 레벨업 1회", "color": Color(0.7, 0.9, 1.0), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": false},
+  {"type": "uproot", "name": "뿌리 뽑기", "desc": "거목/정예에 즉시 큰 피해", "color": Color(0.6, 0.4, 0.2), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": false},
 ]
 
 static func get_powerup_texture(data: Dictionary) -> Texture2D:
