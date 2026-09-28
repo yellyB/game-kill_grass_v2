@@ -1,5 +1,6 @@
 extends RefCounted
-## 파워업(지속) 33 + 아이템(즉발) 17 = 50종 데이터. balance_sim.py PU + powerups.md 포팅.
+## 파워업(레벨업 3택) 38 + 아이템(액티브/보류) 12 = 50종 데이터. balance_sim.py PU + powerups.md 포팅.
+## (P1-3 재편: 즉발 5종 growth_spurt/extra_time/double_or_nothing/fertilizer/instant_level → powerup 복귀)
 ## effect 키: dmg/iv/R/v/val/D=스택당 승수 | vadd/cc/cm/gc=스택당 가산 | 플래그(문자열 true)
 ## kind: "powerup"(레벨업 3택) | "item"(컨테이너/상점→슬롯→발동)
 
@@ -47,7 +48,7 @@ const LIST := [
 	["snowball", "눈덩이", "rare", 4, 1, "powerup", {"snowball": 0.02}],
 	["compound", "복리 성장", "epic", 1, 1, "powerup", {"compound": 0.03}],
 
-	# ── 아이템(즉발) 17 ──
+	# ── 아이템(액티브 슬롯 후보 10 + 보류 2) ──  ※ 5종은 위 powerup으로 복귀(P1-3)
 	["gold_rush", "골드 러시", "uncommon", 10, 1, "item", {"active_coin2x": 10.0}],
 	["blackhole", "블랙홀", "uncommon", 10, 1, "item", {"blackhole": 1.0}],
 	["golden_bloom", "골든 블룸", "uncommon", 10, 1, "item", {"golden_bloom": 1.0}],
@@ -55,15 +56,15 @@ const LIST := [
 	["heavy_blade", "강철 심", "uncommon", 10, 1, "item", {"active_pow80": 10.0}],
 	["harvest_madness", "하베스트 매드니스", "rare", 4, 1, "item", {"active_allstat": 8.0}],
 	["field_clear", "필드 클리어", "epic", 1, 1, "item", {"field_clear": 1.0}],
-	["growth_spurt", "그로스 스퍼트", "uncommon", 10, 1, "item", {"gauge35": 1.0}],
-	["extra_time", "엑스트라 타임", "uncommon", 10, 1, "item", {"add_time": 5.0}],
-	["double_or_nothing", "더블 오어 낫싱", "uncommon", 10, 1, "item", {"gamble": 1.0}],
+	["growth_spurt", "그로스 스퍼트", "uncommon", 10, 1, "powerup", {"gauge35": 1.0}],
+	["extra_time", "엑스트라 타임", "uncommon", 10, 1, "powerup", {"add_time": 5.0}],
+	["double_or_nothing", "더블 오어 낫싱", "uncommon", 10, 1, "powerup", {"gamble": 1.0}],
 	["all_in", "올인", "rare", 4, 1, "item", {"active_allin": 8.0}],
 	["uproot", "뿌리 뽑기", "rare", 4, 1, "item", {"uproot": 0.5}],
 	["lightning_mow", "번개 벌초", "uncommon", 10, 1, "item", {"lightning_mow": 1.0}],
 	["time_freeze", "시간 정지", "rare", 4, 1, "item", {"time_freeze": 5.0}],
-	["fertilizer", "거름 살포", "uncommon", 10, 1, "item", {"fertilizer": 8.0}],
-	["instant_level", "즉시 레벨업", "rare", 4, 1, "item", {"instant_level": 1.0}],
+	["fertilizer", "거름 살포", "uncommon", 10, 1, "powerup", {"fertilizer": 8.0}],
+	["instant_level", "즉시 레벨업", "rare", 4, 1, "powerup", {"instant_level": 1.0}],
 	["golden_rain", "황금비", "rare", 4, 1, "item", {"golden_rain": 1.0}],
 ]
 
