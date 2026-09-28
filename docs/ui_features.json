@@ -25,7 +25,6 @@
     "hud_touch_actives":    {"screen": "hud",     "scope": "mobile_only", "pc": false, "mobile": true,  "desc": "터치 액티브 온스크린 버튼"},
 
     "upgrade_skill_tree":   {"screen": "upgrade", "scope": "both",        "pc": true,  "mobile": true,  "desc": "스킬 트리"},
-    "upgrade_weapon":       {"screen": "upgrade", "scope": "both",        "pc": true,  "mobile": true,  "desc": "무기 강화 섹션"},
     "upgrade_description":  {"screen": "upgrade", "scope": "both",        "pc": true,  "mobile": true,  "desc": "선택 스킬 설명 패널"},
     "upgrade_confirm":      {"screen": "upgrade", "scope": "both",        "pc": true,  "mobile": true,  "desc": "강화하기 버튼"},
     "upgrade_gem_unlock":   {"screen": "upgrade", "scope": "both",        "pc": true,  "mobile": true,  "desc": "보석 해금 UI"},

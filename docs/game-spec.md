@@ -439,16 +439,16 @@
 - **원칙: 메타 스킬 = 완만한 영구 베이스 / 인런 파워업·아이템 = 세션 내 폭발(위에 스택).**
 - **⚠️ 시뮬 집중 감시(powerups.md §7-7)**: snowball·compound(세션 영구성장), interest(경제 곱연산), coin_leech(초반 과강), chain_reaction(HP무시), thorns/uproot(거목 무력화), overkill(상한). **코인배율 상한은 제거됨**(§9.3 상한 금지) — 과성장은 COIN_COST_MULT로 흡수.
 
-## 3.85 무기 시스템 (확정 — ⚠️ 자동 교체, 구매/메뉴 없음)
+## 3.85 무기 시스템 (확정 — ⚠️ 자동 비주얼, 구매/메뉴 없음)
 
-> ★ 여러 번 혼동됨. 최신 결정은 이것: **무기는 자동. 강화 메뉴·상점·구매 없음.**
+> ★ 여러 번 혼동됨. **무기는 자동. 강화 메뉴·상점·구매·스킬게이트 테이블 전부 없음.**
 
-- **무기 = 자동 티어 교체**: 스킬 진행(총 스킬레벨이 `WEAPON_SKILL_REQUIREMENTS` 도달)에 따라 `current_weapon_level`이 **자동 증가**. **코인 구매·상점·강화 버튼 전부 없음.** 무기는 순수 **비주얼/마일스톤**.
-- **데미지는 attack_power 스킬**이 담당(무기는 파워의 겉모습). 무기 `price` 필드는 사실상 미사용(자동이라).
-- **원본 오해 정정**: 무기 `max_targets` 필드는 미사용. "한 번에 몇 개" = **공격개수 스킬 `get_attack_count()`**(무기 아님).
+- **무기 = 공격력(attack_power) 스킬 레벨과 1:1 자동 동기화**: `GameManager`가 attack_power 레벨업 시 `WeaponManager.current_weapon_level`을 그 레벨로 세팅(초기화/로드 포함). 별도 판정·비용 없음. 무기는 **비주얼/마일스톤**(플레이어 스프라이트만 바뀜).
+- **데미지는 attack_power 스킬**이 담당(무기는 파워의 겉모습).
+- **원본 오해 정정**: "한 번에 몇 개" = **공격개수 스킬 `get_attack_count()`**(무기 아님).
 - **보조무기(3/8 로드아웃) 아이디어 = 폐기**(정적 풀 + 이동 플레이어라 커버리지 무기 부적합).
 - **무기형 파워업 5종 제거됨**(회전낫·분신·낫폭풍·충격파·연쇄수확). 파워업은 스탯/유틸/조건형만.
-- **정리 상태(코드)**: 현재 `upgrade_panel`에 구 무기 구매 UI가 남아있음(stale) → 제거 + 자동 교체 전환 예정(태스크: "무기 자동 교체").
+- **v1 구매 잔재 전부 제거됨**(정리 완료): `purchase_next_weapon`·`price`·`max_targets`·`WEAPON_SKILL_REQUIREMENTS`·`get_weapon_skill_requirement`·강화패널 무기섹션 UI 삭제. `WeaponManager`엔 이름/텍스처 + `get_weapon_damage`/`get_weapon_texture`/세이브만 남음.
 
 ## 3.87 화면 흐름 & 허브 (확정 — 세션 사이 허브)
 

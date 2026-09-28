@@ -71,53 +71,6 @@ theme_override_font_sizes/font_size = 42
 text = "강화"
 horizontal_alignment = 1
 
-[node name="WeaponSection" type="PanelContainer" parent="Control/Panel/PaddedArea"]
-layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
-offset_top = 125.0
-offset_bottom = 385.0
-grow_horizontal = 2
-
-[node name="WeaponHBox" type="HBoxContainer" parent="Control/Panel/PaddedArea/WeaponSection"]
-layout_mode = 2
-theme_override_constants/separation = 20
-
-[node name="WeaponImage" type="TextureRect" parent="Control/Panel/PaddedArea/WeaponSection/WeaponHBox"]
-custom_minimum_size = Vector2(150, 150)
-layout_mode = 2
-expand_mode = 1
-stretch_mode = 5
-
-[node name="WeaponInfo" type="VBoxContainer" parent="Control/Panel/PaddedArea/WeaponSection/WeaponHBox"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 8
-
-[node name="CurrentWeaponLabel" type="Label" parent="Control/Panel/PaddedArea/WeaponSection/WeaponHBox/WeaponInfo"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.7, 0.8, 1)
-theme_override_font_sizes/font_size = 22
-text = "현재 무기"
-
-[node name="WeaponNameLabel" type="Label" parent="Control/Panel/PaddedArea/WeaponSection/WeaponHBox/WeaponInfo"]
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 32
-text = "나뭇가지"
-
-[node name="WeaponStatsLabel" type="Label" parent="Control/Panel/PaddedArea/WeaponSection/WeaponHBox/WeaponInfo"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.5, 0.8, 1, 1)
-theme_override_font_sizes/font_size = 24
-text = "대미지: 1"
-
-[node name="WeaponUpgradeBtn" type="Button" parent="Control/Panel/PaddedArea/WeaponSection/WeaponHBox/WeaponInfo"]
-custom_minimum_size = Vector2(0, 70)
-layout_mode = 2
-theme_override_font_sizes/font_size = 26
-text = "업그레이드 $100"
-
 [node name="SectionLabel" type="Label" parent="Control/Panel/PaddedArea"]
 layout_mode = 1
 anchors_preset = 10

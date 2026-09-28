@@ -1022,12 +1022,6 @@ func get_total_skill_level() -> int:
 func get_grass_reward_multiplier() -> float:
   return 1.0
 
-# 무기 레벨별 필요 스킬 포인트 (수동 튜닝)
-# Lv0 나뭇가지, Lv1 녹슨식칼, Lv2 피자커터, Lv3 전기파리채,
-# Lv4 뜨거운다리미, Lv5 매우화난고양이, Lv6 체인소,
-# Lv7 마법지팡이, Lv8 날개달린선풍기, Lv9 위성레이저제초기
-const WEAPON_SKILL_REQUIREMENTS = [0, 0, 2, 4, 7, 11, 16, 21, 27, 34]
-
 # Skill tree prerequisites: "type:level" -> Array of {type, level} (all AND)
 # Row 0 = root (centered, no prereq). Row 1+ = 2-col grid, prereq = skill above in same column
 const SKILL_PREREQS = {
@@ -1154,11 +1148,6 @@ func get_skill_def(type: String) -> Dictionary:
     if def.type == type:
       return def
   return {}
-
-func get_weapon_skill_requirement(weapon_level: int) -> int:
-  if weapon_level < 0 or weapon_level >= WEAPON_SKILL_REQUIREMENTS.size():
-    return 0
-  return WEAPON_SKILL_REQUIREMENTS[weapon_level]
 
 func get_grass_regen_time(base_time: float) -> float:
   # 비옥한 흙(regrow_speed): 재생 속도 +20%/스택 → 재생 시간 단축
