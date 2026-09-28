@@ -3,18 +3,27 @@
 > 목표: **하나의 로직으로 모바일/스팀(및 향후 플랫폼) 화면을 모두 개발**한다.
 > 전략 B = 플랫폼별 UI 씬 세트를 따로 두되, 로직/입력은 공유한다.
 
-## 레이어
+## 레이어 & 폴더 (UI 완전 격리)
 
+**공유(플랫폼 무관)** — 이것만 여러 플랫폼이 함께 쓴다:
 ```
-core/            순수 정적 SSOT (Node 무관). balance/economy/progression/skills/combo/stat_block
-   ↓ preload
-autoload/*_manager.gd   로직 매니저(싱글턴). 상태 소유 + signal 방출. Control 노드 생성 금지.
-   ↓ signal 구독 / 메서드 호출
-scripts/ (뷰)    씬 컨트롤러. 순수 뷰: 표시·연출·입력 수신. 상태는 매니저에만.
-   ├ scripts/ui/ui_kit.gd   뷰 전용 UI 팩토리(버튼/코인라벨/보석아이콘). 플랫폼 스킨 분기 지점.
-   └ (Phase 2) PlatformService  입력/진동/뒤로가기 추상화
-(Phase 3) 플랫폼 UI 로더   부팅 시 플랫폼에 맞는 UI 씬 세트 선택
+core/                 순수 정적 SSOT (Node 무관). balance/economy/progression/skills/combo/stat_block
+autoload/*.gd         로직 매니저(싱글턴). 상태 소유 + signal 방출. Control 노드 생성 금지.
+                      GameManager/WeaponManager/ActiveManager/SessionManager/PlatformService/UIRouter/SaveManager
+scenes/game/          게임플레이 월드(공유): world.tscn(+player/grass/field/coin/elite/great_tree/dropped_item/camera/floating_text)
+scripts/game/         위 월드 스크립트 + powerup_data.gd(파워업 콘텐츠)
+scripts/ui/ui_kit.gd  공유 UI 프리미티브 툴킷(버튼/코인라벨/보석아이콘)
+scripts/boot.gd       부팅 로더
 ```
+
+**플랫폼별 UI(격리)** — 서로 공유하지 않는다:
+```
+scenes/pc/    scripts/pc/     PC UI 세트: main·main_menu·hud·upgrade_panel·money_display·confirm_dialog·powerup_selection·settings_popup
+scenes/mobile/ scripts/mobile/ 모바일 UI 세트(별도 제작 예정 — 지금은 비어있음)
+```
+
+부팅 → `boot.gd` → `UIRouter.goto("main_menu")` → 플랫폼에 맞는 세트 로드.
+PC `main.tscn`은 공유 `scenes/game/world.tscn`을 인스턴스 + PC HUD/오버레이 조립. 모바일도 같은 world를 재사용.
 
 ## 계약 (지켜야 할 규칙)
 
@@ -36,8 +45,9 @@ scripts/ (뷰)    씬 컨트롤러. 순수 뷰: 표시·연출·입력 수신. �
 | 입력/진동/종료 추상화 (PlatformService) | ✅ Phase 2 |
 | 플랫폼별 UI 씬 세트 로더 (UIRouter) | ✅ Phase 3 |
 | 밸런스 시뮬 (콤보→정수→액티브 페이싱) | ✅ Phase 4 |
-| 모바일 터치 백엔드 + 세트 seam + 익스포트 | ✅ Phase 5 |
-| 모바일 전용 세로 레이아웃(비주얼 폴리시) | ⏳ 디바이스 반복 필요 |
+| 모바일 터치 백엔드 + Android 익스포트 | ✅ Phase 5 |
+| **UI 완전 격리 (game/ 공유 vs pc/·mobile/ 분리)** | ✅ (PC 씬 공유 제거) |
+| 모바일 전용 UI 세트(scenes/mobile/) 제작 | ⏳ 별도 작업(디바이스 반복) |
 
 ## PlatformService (Phase 2)
 

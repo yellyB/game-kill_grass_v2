@@ -8,12 +8,10 @@ const SETS := {
 		"main_menu": "res://scenes/pc/main_menu.tscn",
 		"game": "res://scenes/pc/main.tscn",
 	},
-	# 모바일(Phase 5): 현재는 가로 UI 세트를 공유하되 터치 입력(HUD 온스크린 액티브 버튼)만 분기.
-	# 전용 세로 레이아웃이 필요해지면 아래 경로를 mobile 전용 씬으로 교체하면 됨(로직/입력/밸런스는 그대로 공유).
-	"mobile": {
-		"main_menu": "res://scenes/pc/main_menu.tscn",
-		"game": "res://scenes/pc/main.tscn",
-	},
+	# ── 모바일 UI 세트는 별도 제작 예정(scenes/mobile/) ──
+	# PC 씬을 공유하지 않는다. 아래처럼 mobile 전용 씬을 만들면 자동으로 그 세트를 로드:
+	#   "mobile": { "main_menu": "res://scenes/mobile/main_menu.tscn", "game": "res://scenes/mobile/main.tscn" }
+	# 공유되는 것은 core/·매니저·scenes/game/world.tscn(게임플레이 월드)뿐.
 }
 
 func _ready() -> void:
@@ -21,7 +19,11 @@ func _ready() -> void:
 
 func current_set() -> String:
 	var s = "mobile" if PlatformService.uses_touch() else "pc"
-	return s if SETS.has(s) else "pc"
+	if SETS.has(s):
+		return s
+	# 해당 플랫폼 UI 세트 미제작 → PC로 안전 폴백(정식 공유가 아니라 개발용 임시).
+	push_warning("UIRouter: '%s' UI 세트 없음 → pc로 폴백(미구현)" % s)
+	return "pc"
 
 func path(logical: String) -> String:
 	var scene_set = SETS[current_set()]
