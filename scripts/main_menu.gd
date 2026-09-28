@@ -22,6 +22,9 @@ var _confirm_dialog_mode: String = "quit"  # "quit" or "reset"
 var _debug_tap_count: int = 0
 var _debug_last_tap_time: float = 0.0
 var _upgrade_badge: Label = null
+var _active_btn: Button = null
+var _active_overlay: Control = null
+var _active_token_label: Label = null
 
 const WORLD_DATA: Array = [
   {"name": "슬라임 늪", "monsters": "슬라임"},
@@ -112,6 +115,15 @@ func _ready() -> void:
   padded_area.add_child(_settings_btn)
 
   # 상점 제거(§3.10: 정수는 콤보 전용 → 액티브 강화에만 소비)
+  # 액티브 강화 버튼 (정수 소비) — 강화 버튼 아래에 삽입
+  _active_btn = Button.new()
+  _active_btn.text = "액티브 강화"
+  _active_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+  _active_btn.pressed.connect(_open_active_overlay)
+  var vbox := upgrade_btn.get_parent()
+  vbox.add_child(_active_btn)
+  vbox.move_child(_active_btn, upgrade_btn.get_index() + 1)
+  GameManager.style_button(_active_btn, "sub", Vector2(460, 112))
 
   quit_btn.text = "종료"
   quit_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -850,6 +862,189 @@ func _close_world_select() -> void:
   _ws_cards_container = null
   _ws_action_btn = null
   _ws_rune_container = null
+  _on_panel_closed()
+
+# ── 액티브 강화 (정수 소비) ──
+
+func _open_active_overlay() -> void:
+  if _active_overlay != null:
+    return
+  GameManager.play_button_click()
+  _on_panel_opened()
+
+  _active_overlay = Control.new()
+  _active_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+  _active_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+  add_child(_active_overlay)
+
+  var bg = ColorRect.new()
+  bg.color = Color(0.04, 0.07, 0.08, 0.85)
+  bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+  _active_overlay.add_child(bg)
+
+  var center = CenterContainer.new()
+  center.set_anchors_preset(Control.PRESET_FULL_RECT)
+  _active_overlay.add_child(center)
+
+  var panel = PanelContainer.new()
+  panel.custom_minimum_size = Vector2(820, 0)
+  var panel_style = StyleBoxFlat.new()
+  panel_style.bg_color = Color(0.08, 0.12, 0.14)
+  panel_style.corner_radius_top_left = 20
+  panel_style.corner_radius_top_right = 20
+  panel_style.corner_radius_bottom_left = 20
+  panel_style.corner_radius_bottom_right = 20
+  panel_style.border_width_top = 3
+  panel_style.border_width_bottom = 3
+  panel_style.border_width_left = 3
+  panel_style.border_width_right = 3
+  panel_style.border_color = Color(0.3, 0.6, 0.7)
+  panel_style.content_margin_left = 36
+  panel_style.content_margin_right = 36
+  panel_style.content_margin_top = 40
+  panel_style.content_margin_bottom = 36
+  panel.add_theme_stylebox_override("panel", panel_style)
+  center.add_child(panel)
+
+  var vbox = VBoxContainer.new()
+  vbox.add_theme_constant_override("separation", 16)
+  panel.add_child(vbox)
+
+  var header = Label.new()
+  header.text = "액티브 강화"
+  header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+  header.add_theme_font_size_override("font_size", 50)
+  header.add_theme_color_override("font_color", Color.WHITE)
+  header.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+  header.add_theme_constant_override("outline_size", 3)
+  vbox.add_child(header)
+
+  # 보유 정수
+  _active_token_label = Label.new()
+  _active_token_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+  _active_token_label.add_theme_font_size_override("font_size", 30)
+  _active_token_label.add_theme_color_override("font_color", Color(0.4, 0.9, 1.0))
+  _active_token_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+  _active_token_label.add_theme_constant_override("outline_size", 3)
+  vbox.add_child(_active_token_label)
+
+  var sep_margin = MarginContainer.new()
+  sep_margin.add_theme_constant_override("margin_top", 8)
+  sep_margin.add_theme_constant_override("margin_bottom", 8)
+  vbox.add_child(sep_margin)
+  var sep = ColorRect.new()
+  sep.color = Color(0.24, 0.3, 0.34)
+  sep.custom_minimum_size = Vector2(0, 2)
+  sep_margin.add_child(sep)
+
+  _active_cards_container = VBoxContainer.new()
+  _active_cards_container.add_theme_constant_override("separation", 22)
+  vbox.add_child(_active_cards_container)
+
+  var spacer = Control.new()
+  spacer.custom_minimum_size = Vector2(0, 20)
+  vbox.add_child(spacer)
+
+  var close_center = CenterContainer.new()
+  vbox.add_child(close_center)
+  var close_btn = Button.new()
+  close_btn.text = "닫기"
+  close_btn.custom_minimum_size = Vector2(420, 90)
+  close_btn.add_theme_font_size_override("font_size", 38)
+  close_btn.pressed.connect(_close_active_overlay)
+  GameManager.style_button(close_btn, "muted")
+  close_center.add_child(close_btn)
+
+  _rebuild_active_cards()
+
+var _active_cards_container: VBoxContainer = null
+
+func _rebuild_active_cards() -> void:
+  if _active_cards_container == null:
+    return
+  for c in _active_cards_container.get_children():
+    c.queue_free()
+  if _active_token_label:
+    _active_token_label.text = "보유 정수: %d" % GameManager.owned_tokens
+
+  for id in ActiveManager.active_ids():
+    var card = PanelContainer.new()
+    var cs = StyleBoxFlat.new()
+    var unlocked = ActiveManager.is_unlocked(id)
+    cs.bg_color = Color(0.12, 0.16, 0.18) if unlocked else Color(0.1, 0.1, 0.11)
+    cs.corner_radius_top_left = 14
+    cs.corner_radius_top_right = 14
+    cs.corner_radius_bottom_left = 14
+    cs.corner_radius_bottom_right = 14
+    cs.content_margin_left = 22
+    cs.content_margin_right = 22
+    cs.content_margin_top = 16
+    cs.content_margin_bottom = 16
+    card.add_theme_stylebox_override("panel", cs)
+    _active_cards_container.add_child(card)
+
+    var cvbox = VBoxContainer.new()
+    cvbox.add_theme_constant_override("separation", 10)
+    card.add_child(cvbox)
+
+    var name_row = Label.new()
+    if unlocked:
+      name_row.text = ActiveManager.active_name(id)
+    else:
+      var ulv = ActiveManager._def(id).get("unlock_lv", 1)
+      name_row.text = "%s (게임 레벨 %d 해금)" % [ActiveManager.active_name(id), ulv]
+    name_row.add_theme_font_size_override("font_size", 34)
+    name_row.add_theme_color_override("font_color", Color(1, 0.95, 0.7) if unlocked else Color(0.5, 0.5, 0.5))
+    name_row.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+    name_row.add_theme_constant_override("outline_size", 3)
+    cvbox.add_child(name_row)
+
+    # 충전 단축 / 효과 크기 두 트랙
+    cvbox.add_child(_build_active_stat_row(id, "charge",
+      "충전 시간", "%.1f초" % ActiveManager.charge_time(id), unlocked))
+    cvbox.add_child(_build_active_stat_row(id, "effect",
+      "효과 크기", "%d" % int(ActiveManager.effect_value(id)), unlocked))
+
+func _build_active_stat_row(id: String, stat: String, label_text: String, cur_value: String, unlocked: bool) -> Control:
+  var row = HBoxContainer.new()
+  row.add_theme_constant_override("separation", 14)
+
+  var lv: int = ActiveManager.upgrades[id][stat]
+  var name_label = Label.new()
+  name_label.text = "%s Lv.%d (%s)" % [label_text, lv, cur_value]
+  name_label.add_theme_font_size_override("font_size", 26)
+  name_label.add_theme_color_override("font_color", Color(0.85, 0.9, 0.92))
+  name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+  row.add_child(name_label)
+
+  var cost = ActiveManager.upgrade_cost(id, stat)
+  var btn = Button.new()
+  btn.custom_minimum_size = Vector2(200, 66)
+  btn.add_theme_font_size_override("font_size", 26)
+  if cost < 0:
+    btn.text = "최대"
+    btn.disabled = true
+    GameManager.style_button(btn, "muted")
+  else:
+    btn.text = "정수 %d" % cost
+    btn.disabled = not unlocked or not ActiveManager.can_upgrade(id, stat)
+    GameManager.style_button(btn, "sub")
+    btn.pressed.connect(func():
+      if ActiveManager.upgrade(id, stat):
+        GameManager.play_skill_upgrade_sound()
+        _rebuild_active_cards()
+      else:
+        GameManager.play_button_click())
+  row.add_child(btn)
+  return row
+
+func _close_active_overlay() -> void:
+  GameManager.play_button_click()
+  if _active_overlay != null:
+    _active_overlay.queue_free()
+    _active_overlay = null
+  _active_cards_container = null
+  _active_token_label = null
   _on_panel_closed()
 
 # ── Settings Popup ──
