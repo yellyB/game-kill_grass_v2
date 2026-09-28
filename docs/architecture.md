@@ -35,7 +35,9 @@ scripts/ (뷰)    씬 컨트롤러. 순수 뷰: 표시·연출·입력 수신. �
 | 세션 클록 분리 (main.gd → SessionManager) | ✅ Phase 1.5 |
 | 입력/진동/종료 추상화 (PlatformService) | ✅ Phase 2 |
 | 플랫폼별 UI 씬 세트 로더 (UIRouter) | ✅ Phase 3 |
-| 모바일 세로 UI 세트 + 익스포트 | ⏳ Phase 5 |
+| 밸런스 시뮬 (콤보→정수→액티브 페이싱) | ✅ Phase 4 |
+| 모바일 터치 백엔드 + 세트 seam + 익스포트 | ✅ Phase 5 |
+| 모바일 전용 세로 레이아웃(비주얼 폴리시) | ⏳ 디바이스 반복 필요 |
 
 ## PlatformService (Phase 2)
 
@@ -56,8 +58,14 @@ scripts/ (뷰)    씬 컨트롤러. 순수 뷰: 표시·연출·입력 수신. �
 - 모든 씬 전환은 `UIRouter.goto(logical)` 경유(직접 `change_scene_to_file` 금지).
 - **새 플랫폼 추가**: `SETS`에 세트 1개 + 씬 파일만 추가 → 코드 변경 없음.
 
+## 모바일 (Phase 5)
+
+- **터치 입력**: 이동=드래그(`player.gd`, 백엔드 무관 동작). 액티브=HUD 온스크린 버튼(`_setup_touch_active_buttons`, `PlatformService.uses_touch()`일 때만). 키보드 1/2와 동일하게 `ActiveManager.fire_slot()` 호출.
+- **UI 세트**: `UIRouter.SETS["mobile"]` 존재(현재 가로 UI 공유). 전용 세로 레이아웃이 필요하면 이 경로만 mobile 전용 씬으로 교체 → 로직/입력/밸런스 무변경.
+- **방향**: `window/handheld/orientation="landscape"` (v2는 가로 설계).
+- **익스포트**: `export_presets.cfg` Android 프리셋(arm64, `com.yelly.pooljukigi`, etc2/astc). iOS는 preset 추가 필요.
+- **남은 것**: 모바일 전용 세로 레이아웃은 디바이스 위 비주얼 반복이 필요(헤드리스 검증 불가) → 별도 작업.
+
 ## 아직 남은 커플링 (알려진 것)
 
-- 모바일 UI 세트(세로) 미존재 → Phase 5. 현재는 pc 세트로 fallback.
-- 터치 드래그 이동은 `player.gd`가 직접 처리(백엔드 무관하게 동작) → Phase 5에서 정리 검토.
 - 오디오(SFX/BGM)는 매니저·씬에 혼재 → 뷰/프레젠테이션 관심사, 우선순위 낮음(추후 정리 후보).

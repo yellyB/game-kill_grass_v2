@@ -8,7 +8,12 @@ const SETS := {
 		"main_menu": "res://scenes/ui/main_menu.tscn",
 		"game": "res://scenes/core/main.tscn",
 	},
-	# "mobile": { ... }  # Phase 5에서 세로 UI 세트 추가
+	# 모바일(Phase 5): 현재는 가로 UI 세트를 공유하되 터치 입력(HUD 온스크린 액티브 버튼)만 분기.
+	# 전용 세로 레이아웃이 필요해지면 아래 경로를 mobile 전용 씬으로 교체하면 됨(로직/입력/밸런스는 그대로 공유).
+	"mobile": {
+		"main_menu": "res://scenes/ui/main_menu.tscn",
+		"game": "res://scenes/core/main.tscn",
+	},
 }
 
 func _ready() -> void:

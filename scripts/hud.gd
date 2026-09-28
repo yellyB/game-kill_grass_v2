@@ -55,6 +55,10 @@ func _ready() -> void:
   # 액티브(1/2) 충전 게이지
   _setup_active_gauges()
 
+  # 터치 플랫폼: 액티브 온스크린 버튼(키보드 대체)
+  if PlatformService.uses_touch():
+    _setup_touch_active_buttons()
+
   # 콤보 미터 (중앙 상단)
   _setup_combo_meter()
   GameManager.combo_changed.connect(_on_combo_changed)
@@ -301,6 +305,47 @@ func _setup_active_gauges() -> void:
     _update_active_gauge(id, ActiveManager.get_charge(id))
   ActiveManager.charge_changed.connect(_update_active_gauge)
   ActiveManager.active_ready.connect(_on_active_ready)
+
+# ── 터치: 액티브 온스크린 버튼 (모바일, 키보드 1/2 대체) ──
+var _touch_active_btns: Dictionary = {}  # id -> Button
+
+func _setup_touch_active_buttons() -> void:
+  var box = VBoxContainer.new()
+  box.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+  box.offset_left = -220
+  box.offset_top = -320
+  box.offset_right = -24
+  box.offset_bottom = -24
+  box.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+  box.grow_vertical = Control.GROW_DIRECTION_BEGIN
+  box.alignment = BoxContainer.ALIGNMENT_END
+  box.add_theme_constant_override("separation", 16)
+  padded_area.add_child(box)
+  var ids = ActiveManager.active_ids()
+  for i in ids.size():
+    var id: String = ids[i]
+    var btn = Button.new()
+    btn.custom_minimum_size = Vector2(180, 130)
+    btn.focus_mode = Control.FOCUS_NONE
+    var slot := i
+    btn.pressed.connect(func(): ActiveManager.fire_slot(slot))
+    UIKit.style_button(btn, "sub")
+    box.add_child(btn)
+    _touch_active_btns[id] = btn
+    btn.visible = ActiveManager.is_unlocked(id)
+    _update_touch_active_btn(id, ActiveManager.get_charge(id))
+  ActiveManager.charge_changed.connect(_update_touch_active_btn)
+
+func _update_touch_active_btn(id: String, ratio: float) -> void:
+  if not _touch_active_btns.has(id):
+    return
+  var btn: Button = _touch_active_btns[id]
+  var ready := ratio >= 1.0
+  btn.disabled = not ready
+  if ready:
+    btn.text = "%s\n▶ 발동" % ActiveManager.active_name(id)
+  else:
+    btn.text = "%s\n%d%%" % [ActiveManager.active_name(id), int(ratio * 100.0)]
 
 # ── 콤보 미터 (중앙 상단) ──
 var _combo_count_label: Label = null
