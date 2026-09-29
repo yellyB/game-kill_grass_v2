@@ -11,6 +11,7 @@ const BUTTON_COLORS := {
 }
 
 const COIN_TEXTURE := preload("res://resources/images/coin.png")
+const GEM_TEXTURE := preload("res://resources/images/gem.png")
 
 # ── 공유 위젯 헬퍼 (React식 프리미티브) ──
 
@@ -83,33 +84,18 @@ static func create_coin_label(amount_text: String, font_size: int = 30,
 
 	return hbox
 
-static func create_gem_icon(icon_size: int, tint: Color = Color(0.9, 0.2, 0.4)) -> Control:
-	var container = Control.new()
-	container.custom_minimum_size = Vector2(icon_size, icon_size)
-	container.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# 컨테이너(HBox 등)에서 세로로 늘어나면 폴리곤이 위쪽(0~size)에 그려져 아이콘이 위로 뜬다.
-	# 코인 아이콘(SHRINK_CENTER)과 동일하게 세로 중앙 고정 → 숫자와 정렬 맞춤.
-	container.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var cx = icon_size * 0.5
-	var cy = icon_size * 0.5
-	var sx = icon_size * 0.38
-	var sy = icon_size * 0.5
-	var body = Polygon2D.new()
-	body.color = tint
-	body.polygon = PackedVector2Array([
-		Vector2(cx, cy - sy), Vector2(cx + sx, cy - sy * 0.35),
-		Vector2(cx + sx, cy + sy * 0.35), Vector2(cx, cy + sy),
-		Vector2(cx - sx, cy + sy * 0.35), Vector2(cx - sx, cy - sy * 0.35),
-	])
-	container.add_child(body)
-	var hl = Polygon2D.new()
-	hl.color = Color(tint.r + 0.1, tint.g + 0.3, tint.b + 0.2, 0.5)
-	hl.polygon = PackedVector2Array([
-		Vector2(cx, cy - sy), Vector2(cx + sx, cy - sy * 0.35),
-		Vector2(cx, cy), Vector2(cx - sx, cy - sy * 0.35),
-	])
-	container.add_child(hl)
-	return container
+# 보석 아이콘 = gem.png 텍스처(코인과 동일한 그림 에셋 방식). 구 폴리곤 대체.
+# tint: 이미지가 이미 마젠타로 채색돼 있어 무시(호환용 인자). 구매가능/불가 신호는 텍스트 색이 담당.
+static func create_gem_icon(icon_size: int, _tint: Color = Color(0.9, 0.2, 0.4)) -> Control:
+	var icon = TextureRect.new()
+	icon.texture = GEM_TEXTURE
+	icon.expand_mode = TextureRect.EXPAND_FIT_HEIGHT
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.custom_minimum_size = Vector2(icon_size, icon_size)
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# 코인 아이콘과 동일하게 세로 중앙 고정 → 숫자와 정렬 맞춤.
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	return icon
 
 static func style_button(btn: Button, color_type: String = "main", btn_size: Vector2 = Vector2.ZERO) -> void:
 	var main_color = BUTTON_COLORS.get(color_type, BUTTON_COLORS["main"])
