@@ -200,63 +200,150 @@ func _add_world_button() -> void:
   padded_area.add_child(btn)
 
 func _on_hub_world_pressed() -> void:
-  GameManager.play_confirm_click()
-  UIRouter.goto("game")   # TODO: 월드 선택 화면 거쳐 시작하도록(다음 슬라이스)
+  # 월드 선택 페이지(전체화면)는 다음 슬라이스에 구현 → 그때 UIRouter.goto("world_select")
+  # 지금은 바로 게임 시작 안 함(임시)
+  GameManager.play_button_click()
 
-# ── 우측 40%: 액티브 강화(구매형 인라인) ──
-var _active_section: VBoxContainer = null
+# ── 우측 40%: 액티브 강화 (메뉴 팝업 스타일 그대로 이식) ──
+var _active_cards: VBoxContainer = null
+var _active_token_label: Label = null
 
 func _build_active_section() -> void:
-  _active_section = VBoxContainer.new()
-  _active_section.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-  _active_section.anchor_left = 0.62
-  _active_section.offset_left = 0.0
-  _active_section.offset_top = 505.0
-  _active_section.offset_right = -20.0
-  _active_section.offset_bottom = -140.0
-  _active_section.add_theme_constant_override("separation", 12)
-  padded_area.add_child(_active_section)
+  # 스킬트리 | 액티브 구분 바
+  var divider := ColorRect.new()
+  divider.color = Palette.PANEL_BORDER
+  divider.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+  divider.anchor_left = 0.605
+  divider.anchor_right = 0.605
+  divider.offset_left = -2.0
+  divider.offset_right = 2.0
+  divider.offset_top = 200.0
+  divider.offset_bottom = -40.0
+  divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+  padded_area.add_child(divider)
+
+  # 파란 테두리 패널 (메뉴 액티브 팝업 스타일)
+  var panel := PanelContainer.new()
+  panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+  panel.anchor_left = 0.62
+  panel.offset_left = 0.0
+  panel.offset_top = 200.0
+  panel.offset_right = -20.0
+  panel.offset_bottom = -40.0
+  var ps := StyleBoxFlat.new()
+  ps.bg_color = Color(0.08, 0.12, 0.14)
+  ps.set_corner_radius_all(20)
+  ps.set_border_width_all(3)
+  ps.border_color = Color(0.3, 0.6, 0.7)   # 파란 외곽선
+  ps.content_margin_left = 36
+  ps.content_margin_right = 36
+  ps.content_margin_top = 40
+  ps.content_margin_bottom = 36
+  panel.add_theme_stylebox_override("panel", ps)
+  padded_area.add_child(panel)
+
+  var vbox := VBoxContainer.new()
+  vbox.add_theme_constant_override("separation", 16)
+  panel.add_child(vbox)
+
+  # 제목 (가운데)
+  var header := Label.new()
+  header.text = "액티브 강화"
+  header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+  header.add_theme_font_size_override("font_size", 50)
+  header.add_theme_color_override("font_color", Color.WHITE)
+  header.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+  header.add_theme_constant_override("outline_size", 3)
+  vbox.add_child(header)
+
+  # 보유 정수 (가운데, 시안)
+  _active_token_label = Label.new()
+  _active_token_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+  _active_token_label.add_theme_font_size_override("font_size", 30)
+  _active_token_label.add_theme_color_override("font_color", Color(0.4, 0.9, 1.0))
+  _active_token_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+  _active_token_label.add_theme_constant_override("outline_size", 3)
+  vbox.add_child(_active_token_label)
+
+  # 구분선
+  var sep_m := MarginContainer.new()
+  sep_m.add_theme_constant_override("margin_top", 8)
+  sep_m.add_theme_constant_override("margin_bottom", 8)
+  vbox.add_child(sep_m)
+  var sep := ColorRect.new()
+  sep.color = Color(0.24, 0.3, 0.34)
+  sep.custom_minimum_size = Vector2(0, 2)
+  sep_m.add_child(sep)
+
+  # 카드 컨테이너 (남은 높이 채움 → 카드가 세로로 길게 = 정사각 비율)
+  _active_cards = VBoxContainer.new()
+  _active_cards.add_theme_constant_override("separation", 22)
+  _active_cards.size_flags_vertical = Control.SIZE_EXPAND_FILL
+  vbox.add_child(_active_cards)
+
   _rebuild_active_section()
   ActiveManager.active_upgraded.connect(func(_id): _rebuild_active_section())
   GameManager.token_changed.connect(func(_t): _rebuild_active_section())
 
 func _rebuild_active_section() -> void:
-  if not is_instance_valid(_active_section):
+  if not is_instance_valid(_active_cards):
     return
-  for c in _active_section.get_children():
+  if _active_token_label:
+    _active_token_label.text = "보유 정수: %d" % GameManager.owned_tokens
+  for c in _active_cards.get_children():
     c.queue_free()
-  _active_section.add_child(UIKit.make_label("⚡ 액티브 강화", 34, Palette.XP, 4))
-  _active_section.add_child(UIKit.make_label("보유 정수: %d" % GameManager.owned_tokens, 24, Palette.TOKEN, 3))
   for id in ActiveManager.active_ids():
     var unlocked: bool = ActiveManager.is_unlocked(id)
-    var card := UIKit.make_card()
-    var box := VBoxContainer.new()
-    box.add_theme_constant_override("separation", 8)
-    card.add_child(box)
+    var card := PanelContainer.new()
+    card.size_flags_vertical = Control.SIZE_EXPAND_FILL   # 세로로 길게(정사각 비율)
+    var cs := StyleBoxFlat.new()
+    cs.bg_color = Color(0.12, 0.16, 0.18) if unlocked else Color(0.1, 0.1, 0.11)
+    cs.set_corner_radius_all(14)
+    cs.content_margin_left = 22
+    cs.content_margin_right = 22
+    cs.content_margin_top = 16
+    cs.content_margin_bottom = 16
+    card.add_theme_stylebox_override("panel", cs)
+    _active_cards.add_child(card)
+
+    var cvbox := VBoxContainer.new()
+    cvbox.add_theme_constant_override("separation", 12)
+    card.add_child(cvbox)
+
+    # 액티브 이름 (가운데)
     var nm: String = ActiveManager.active_name(id)
-    var title: String = nm if unlocked else "%s (게임레벨 %d 해금)" % [nm, ActiveManager._def(id).get("unlock_lv", 1)]
-    box.add_child(UIKit.make_label(title, 26, (Color(1, 0.95, 0.7) if unlocked else Color(0.5, 0.5, 0.5)), 3))
-    box.add_child(_active_row(id, "charge", "충전 단축", "%.1f초" % ActiveManager.charge_time(id), unlocked))
-    box.add_child(_active_row(id, "effect", "효과 크기", "%d" % int(ActiveManager.effect_value(id)), unlocked))
-    _active_section.add_child(card)
+    var name_label := Label.new()
+    name_label.text = nm if unlocked else "%s (게임 레벨 %d 해금)" % [nm, ActiveManager._def(id).get("unlock_lv", 1)]
+    name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    name_label.add_theme_font_size_override("font_size", 34)
+    name_label.add_theme_color_override("font_color", Color(1, 0.95, 0.7) if unlocked else Color(0.5, 0.5, 0.5))
+    name_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+    name_label.add_theme_constant_override("outline_size", 3)
+    cvbox.add_child(name_label)
+
+    cvbox.add_child(_active_row(id, "charge", "충전 단축", "%.1f초" % ActiveManager.charge_time(id), unlocked))
+    cvbox.add_child(_active_row(id, "effect", "효과 크기", "%d" % int(ActiveManager.effect_value(id)), unlocked))
 
 func _active_row(id: String, stat: String, label_text: String, cur_value: String, unlocked: bool) -> Control:
   var row := HBoxContainer.new()
-  row.add_theme_constant_override("separation", 10)
+  row.add_theme_constant_override("separation", 14)
   var lv: int = ActiveManager.upgrades[id][stat]
-  var nl := UIKit.make_label("%s Lv.%d (%s)" % [label_text, lv, cur_value], 22, Color(0.85, 0.9, 0.92), 3)
+  var cost: int = ActiveManager.upgrade_cost(id, stat)
+  # 정수 비용을 설명에 같이 표기
+  var desc := "%s Lv.%d (%s)" % [label_text, lv, cur_value]
+  desc += "\n비용: 정수 %d" % cost if cost >= 0 else "\n최대 레벨"
+  var nl := UIKit.make_label(desc, 24, Color(0.85, 0.9, 0.92), 3)
   nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
   row.add_child(nl)
-  var cost: int = ActiveManager.upgrade_cost(id, stat)
   var btn := Button.new()
-  btn.custom_minimum_size = Vector2(150, 56)
-  btn.add_theme_font_size_override("font_size", 22)
+  btn.custom_minimum_size = Vector2(160, 66)
+  btn.add_theme_font_size_override("font_size", 26)
   if cost < 0:
     btn.text = "최대"
     btn.disabled = true
     UIKit.style_button(btn, "muted")
   else:
-    btn.text = "정수 %d" % cost
+    btn.text = "구매"
     btn.disabled = not unlocked or not ActiveManager.can_upgrade(id, stat)
     UIKit.style_button(btn, "sub")
     btn.pressed.connect(func():
@@ -1527,11 +1614,11 @@ func _position_bottom_section() -> void:
 
   # Position HBox at bottom of PaddedArea
   _bottom_hbox.anchor_left = 0.0
-  _bottom_hbox.anchor_right = 1.0
+  _bottom_hbox.anchor_right = 0.6   # 허브: 설명+강화버튼을 좌측(스킬트리) 쪽에 치우침
   _bottom_hbox.anchor_top = 1.0
   _bottom_hbox.anchor_bottom = 1.0
   _bottom_hbox.offset_left = 0
-  _bottom_hbox.offset_right = 0
+  _bottom_hbox.offset_right = -20
   _bottom_hbox.offset_top = -section_height
   _bottom_hbox.offset_bottom = 0
 
