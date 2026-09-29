@@ -125,6 +125,15 @@ func _ready() -> void:
   vbox.move_child(_active_btn, upgrade_btn.get_index() + 1)
   UIKit.style_button(_active_btn, "sub", Vector2(460, 112))
 
+  # (임시/개발) 허브 진입 버튼 — 허브 개발 중 F5로 바로 확인용
+  var _hub_btn := Button.new()
+  _hub_btn.text = "허브 (개발중)"
+  _hub_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+  _hub_btn.pressed.connect(func(): GameManager.play_button_click(); UIRouter.goto("hub"))
+  vbox.add_child(_hub_btn)
+  vbox.move_child(_hub_btn, _active_btn.get_index() + 1)
+  UIKit.style_button(_hub_btn, "sub", Vector2(460, 112))
+
   quit_btn.text = "종료"
   quit_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
   UIKit.style_button(quit_btn, "muted", Vector2(460, 112))

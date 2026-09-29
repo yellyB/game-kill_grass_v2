@@ -52,6 +52,24 @@ static func style_progress_bar(bar: ProgressBar, fill: Color, bg: Color = Color(
 	fill_sb.set_corner_radius_all(radius)
 	bar.add_theme_stylebox_override("fill", fill_sb)
 
+# 자원 카운터(아이콘 이미지 + 숫자). 코인/보석/정수 등 상단 표시 공용.
+#   icon: 표시할 텍스처(Icons.COIN/GEM/TOKEN 등), color: 숫자 색
+static func currency_counter(icon: Texture2D, amount_text: String, color: Color,
+		font_size: int = 30, outline: int = 4) -> HBoxContainer:
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", int(font_size * 0.25))
+	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var ic := TextureRect.new()
+	ic.texture = icon
+	ic.expand_mode = TextureRect.EXPAND_FIT_HEIGHT
+	ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	ic.custom_minimum_size = Vector2(font_size * 0.9, font_size * 0.9)
+	ic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_child(ic)
+	hbox.add_child(make_label(amount_text, font_size, color, outline))
+	return hbox
+
 # 코인 아이콘 + 금액 텍스트를 담은 HBoxContainer 생성
 static func create_coin_label(amount_text: String, font_size: int = 30,
 		font_color: Color = Color(1, 0.9, 0.3), outline_size: int = 0,

@@ -170,8 +170,10 @@ func _refresh_skill_tree() -> void:
     return
   for c in _skill_area.get_children():
     c.queue_free()
-  var tree := SkillTree.build(_build_skill_groups(), _build_skill_edges(), _on_skill_pressed, 130.0)
+  var tree := SkillTree.new()
+  tree.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
   _skill_area.add_child(tree)
+  tree.setup(_build_skill_groups(), _build_skill_edges(), _on_skill_pressed)
 
 func _build_skill_groups() -> Array:
   var out := []
