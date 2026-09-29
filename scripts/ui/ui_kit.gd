@@ -10,8 +10,7 @@ const BUTTON_COLORS := {
 	"sub": Color(0.45, 0.62, 0.78),
 }
 
-const COIN_TEXTURE := preload("res://resources/images/coin.png")
-const GEM_TEXTURE := preload("res://resources/images/gem.png")
+# 코인/보석 아이콘은 공용 Icons 레지스트리에서 가져온다(Icons.COIN / Icons.GEM).
 
 # ── 공유 위젯 헬퍼 (React식 프리미티브) ──
 
@@ -65,7 +64,7 @@ static func create_coin_label(amount_text: String, font_size: int = 30,
 		hbox.alignment = BoxContainer.ALIGNMENT_CENTER
 
 	var icon = TextureRect.new()
-	icon.texture = COIN_TEXTURE
+	icon.texture = Icons.COIN
 	icon.expand_mode = TextureRect.EXPAND_FIT_HEIGHT
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.custom_minimum_size = Vector2(icon_size, icon_size)
@@ -88,7 +87,7 @@ static func create_coin_label(amount_text: String, font_size: int = 30,
 # tint: 이미지가 이미 마젠타로 채색돼 있어 무시(호환용 인자). 구매가능/불가 신호는 텍스트 색이 담당.
 static func create_gem_icon(icon_size: int, _tint: Color = Color(0.9, 0.2, 0.4)) -> Control:
 	var icon = TextureRect.new()
-	icon.texture = GEM_TEXTURE
+	icon.texture = Icons.GEM
 	icon.expand_mode = TextureRect.EXPAND_FIT_HEIGHT
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.custom_minimum_size = Vector2(icon_size, icon_size)
