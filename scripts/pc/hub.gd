@@ -111,6 +111,7 @@ func _ready() -> void:
   close_btn.pressed.connect(_on_close_pressed)
   confirm_btn.pressed.connect(_on_confirm_pressed)
   _add_world_button()
+  _build_active_section()
 
   GameManager.money_changed.connect(_on_money_changed)
   GameManager.upgrade_purchased.connect(_on_upgrade_purchased)
@@ -201,6 +202,70 @@ func _add_world_button() -> void:
 func _on_hub_world_pressed() -> void:
   GameManager.play_confirm_click()
   UIRouter.goto("game")   # TODO: 월드 선택 화면 거쳐 시작하도록(다음 슬라이스)
+
+# ── 우측 40%: 액티브 강화(구매형 인라인) ──
+var _active_section: VBoxContainer = null
+
+func _build_active_section() -> void:
+  _active_section = VBoxContainer.new()
+  _active_section.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+  _active_section.anchor_left = 0.62
+  _active_section.offset_left = 0.0
+  _active_section.offset_top = 505.0
+  _active_section.offset_right = -20.0
+  _active_section.offset_bottom = -140.0
+  _active_section.add_theme_constant_override("separation", 12)
+  padded_area.add_child(_active_section)
+  _rebuild_active_section()
+  ActiveManager.active_upgraded.connect(func(_id): _rebuild_active_section())
+  GameManager.token_changed.connect(func(_t): _rebuild_active_section())
+
+func _rebuild_active_section() -> void:
+  if not is_instance_valid(_active_section):
+    return
+  for c in _active_section.get_children():
+    c.queue_free()
+  _active_section.add_child(UIKit.make_label("⚡ 액티브 강화", 34, Palette.XP, 4))
+  _active_section.add_child(UIKit.make_label("보유 정수: %d" % GameManager.owned_tokens, 24, Palette.TOKEN, 3))
+  for id in ActiveManager.active_ids():
+    var unlocked: bool = ActiveManager.is_unlocked(id)
+    var card := UIKit.make_card()
+    var box := VBoxContainer.new()
+    box.add_theme_constant_override("separation", 8)
+    card.add_child(box)
+    var nm: String = ActiveManager.active_name(id)
+    var title: String = nm if unlocked else "%s (게임레벨 %d 해금)" % [nm, ActiveManager._def(id).get("unlock_lv", 1)]
+    box.add_child(UIKit.make_label(title, 26, (Color(1, 0.95, 0.7) if unlocked else Color(0.5, 0.5, 0.5)), 3))
+    box.add_child(_active_row(id, "charge", "충전 단축", "%.1f초" % ActiveManager.charge_time(id), unlocked))
+    box.add_child(_active_row(id, "effect", "효과 크기", "%d" % int(ActiveManager.effect_value(id)), unlocked))
+    _active_section.add_child(card)
+
+func _active_row(id: String, stat: String, label_text: String, cur_value: String, unlocked: bool) -> Control:
+  var row := HBoxContainer.new()
+  row.add_theme_constant_override("separation", 10)
+  var lv: int = ActiveManager.upgrades[id][stat]
+  var nl := UIKit.make_label("%s Lv.%d (%s)" % [label_text, lv, cur_value], 22, Color(0.85, 0.9, 0.92), 3)
+  nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+  row.add_child(nl)
+  var cost: int = ActiveManager.upgrade_cost(id, stat)
+  var btn := Button.new()
+  btn.custom_minimum_size = Vector2(150, 56)
+  btn.add_theme_font_size_override("font_size", 22)
+  if cost < 0:
+    btn.text = "최대"
+    btn.disabled = true
+    UIKit.style_button(btn, "muted")
+  else:
+    btn.text = "정수 %d" % cost
+    btn.disabled = not unlocked or not ActiveManager.can_upgrade(id, stat)
+    UIKit.style_button(btn, "sub")
+    btn.pressed.connect(func():
+      if ActiveManager.upgrade(id, stat):
+        GameManager.play_skill_upgrade_sound()
+      else:
+        GameManager.play_button_click())
+  row.add_child(btn)
+  return row
 
 func _on_other_panel_opened() -> void:
   pass
