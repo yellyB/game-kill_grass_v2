@@ -166,6 +166,14 @@ func _ready() -> void:
 
   build_skill_tree()
   clear_selection()
+  # 레이아웃 확정 후(스크롤 실제 폭=60%) 재빌드 — 초기엔 size=0이라 폭을 100%로 오판해 노드가 커짐
+  _rebuild_tree_after_layout()
+
+func _rebuild_tree_after_layout() -> void:
+  await get_tree().process_frame
+  await get_tree().process_frame
+  build_skill_tree()
+  clear_selection()
 func set_toggle_button_visible(_should_show: bool) -> void:
   pass
 
@@ -197,7 +205,7 @@ func _add_world_button() -> void:
   btn.offset_left = 0.0
   btn.offset_right = -20.0
   btn.offset_top = -300.0
-  btn.offset_bottom = -20.0
+  btn.offset_bottom = 0.0   # 강화하기 버튼(하단 섹션)과 동일 높이/하단 정렬
   btn.grow_horizontal = Control.GROW_DIRECTION_BEGIN
   btn.grow_vertical = Control.GROW_DIRECTION_BEGIN
   btn.add_theme_font_size_override("font_size", 44)
