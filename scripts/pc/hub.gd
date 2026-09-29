@@ -187,22 +187,27 @@ func _on_close_pressed() -> void:
 
 # 허브 전용: 월드 선택 버튼 (스킬 페이지에 추가). 임시로 눌러서 게임 시작(월드선택 화면은 추후)
 func _add_world_button() -> void:
+  # 우하단(액티브 아래 빈 공간)에 크게. 좌측 스킬 설명 섹션과 같은 높이대.
   var btn := Button.new()
   btn.text = "월드 선택 ▶"
-  btn.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-  btn.offset_left = -300.0
-  btn.offset_top = 80.0
+  btn.anchor_left = 0.62
+  btn.anchor_right = 1.0
+  btn.anchor_top = 1.0
+  btn.anchor_bottom = 1.0
+  btn.offset_left = 0.0
   btn.offset_right = -20.0
-  btn.offset_bottom = 156.0
+  btn.offset_top = -300.0
+  btn.offset_bottom = -20.0
   btn.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+  btn.grow_vertical = Control.GROW_DIRECTION_BEGIN
+  btn.add_theme_font_size_override("font_size", 44)
   btn.pressed.connect(_on_hub_world_pressed)
-  UIKit.style_button(btn, "main", Vector2(280, 76))
+  UIKit.style_button(btn, "main")
   padded_area.add_child(btn)
 
 func _on_hub_world_pressed() -> void:
-  # 월드 선택 페이지(전체화면)는 다음 슬라이스에 구현 → 그때 UIRouter.goto("world_select")
-  # 지금은 바로 게임 시작 안 함(임시)
-  GameManager.play_button_click()
+  GameManager.play_confirm_click()
+  UIRouter.goto("world_select")
 
 # ── 우측 40%: 액티브 강화 (메뉴 팝업 스타일 그대로 이식) ──
 var _active_cards: VBoxContainer = null
@@ -218,7 +223,7 @@ func _build_active_section() -> void:
   divider.offset_left = -2.0
   divider.offset_right = 2.0
   divider.offset_top = 200.0
-  divider.offset_bottom = -40.0
+  divider.offset_bottom = -320.0   # 하단 ~300px는 월드 버튼 자리로 비움
   divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
   padded_area.add_child(divider)
 
@@ -229,7 +234,7 @@ func _build_active_section() -> void:
   panel.offset_left = 0.0
   panel.offset_top = 200.0
   panel.offset_right = -20.0
-  panel.offset_bottom = -40.0
+  panel.offset_bottom = -320.0   # 하단 ~300px는 월드 버튼 자리로 비움(스킬 설명 섹션 높이만큼)
   var ps := StyleBoxFlat.new()
   ps.bg_color = Color(0.08, 0.12, 0.14)
   ps.set_corner_radius_all(20)

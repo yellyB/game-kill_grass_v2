@@ -8,6 +8,7 @@ const SETS := {
 		"main_menu": "res://scenes/pc/main_menu.tscn",
 		"game": "res://scenes/pc/main.tscn",
 		"hub": "res://scenes/pc/hub.tscn",
+		"world_select": "res://scenes/pc/world_select.tscn",
 	},
 	# 모바일 UI 세트(세로) — PC와 별개 씬. 공유는 core/·매니저·scenes/game/world.tscn 뿐.
 	"mobile": {
