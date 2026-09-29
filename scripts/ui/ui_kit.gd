@@ -12,6 +12,46 @@ const BUTTON_COLORS := {
 
 const COIN_TEXTURE := preload("res://resources/images/coin.png")
 
+# ── 공유 위젯 헬퍼 (React식 프리미티브) ──
+
+# 스타일 패널(카드): 배경/테두리/코너 반경. 거의 모든 화면의 패널 공통.
+static func make_card(bg: Color = Palette.PANEL_BG, border: Color = Palette.PANEL_BORDER,
+		radius: int = 14, border_width: int = 2) -> PanelContainer:
+	var card := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = bg
+	sb.set_corner_radius_all(radius)
+	sb.set_border_width_all(border_width)
+	sb.border_color = border
+	card.add_theme_stylebox_override("panel", sb)
+	return card
+
+# 아웃라인 포함 라벨. 폰트크기/색만 주면 검정 아웃라인 자동.
+static func make_label(text: String, font_size: int = 28, color: Color = Palette.TEXT,
+		outline: int = 4) -> Label:
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.add_theme_font_size_override("font_size", font_size)
+	lbl.add_theme_color_override("font_color", color)
+	if outline > 0:
+		lbl.add_theme_color_override("font_outline_color", Palette.OUTLINE)
+		lbl.add_theme_constant_override("outline_size", outline)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return lbl
+
+# ProgressBar 공통 스타일(채움/배경색). XP·충전·콤보·타이머 게이지 공용.
+static func style_progress_bar(bar: ProgressBar, fill: Color, bg: Color = Color(0.2, 0.2, 0.25, 0.6),
+		radius: int = 6) -> void:
+	bar.show_percentage = false
+	var bg_sb := StyleBoxFlat.new()
+	bg_sb.bg_color = bg
+	bg_sb.set_corner_radius_all(radius)
+	bar.add_theme_stylebox_override("background", bg_sb)
+	var fill_sb := StyleBoxFlat.new()
+	fill_sb.bg_color = fill
+	fill_sb.set_corner_radius_all(radius)
+	bar.add_theme_stylebox_override("fill", fill_sb)
+
 # 코인 아이콘 + 금액 텍스트를 담은 HBoxContainer 생성
 static func create_coin_label(amount_text: String, font_size: int = 30,
 		font_color: Color = Color(1, 0.9, 0.3), outline_size: int = 0,
