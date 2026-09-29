@@ -5,7 +5,7 @@
 > **아래 원본 설명은 이식 참조용**이며, v2 설계와 충돌 시 `game-spec.md`가 우선한다.
 
 > 🧭 **v2 아키텍처(멀티플랫폼) 필독 = `docs/architecture.md`**: 한 코어(core/·매니저) 공유 + **UI는 플랫폼별 완전 분리**(`scenes/pc`·`scripts/pc` ↔ `scenes/mobile`·`scripts/mobile`, 공유는 `scenes/game/`·`ui_kit`·`PowerupData`). 씬 선택은 `UIRouter`, 입력/진동/종료는 `PlatformService`. 데스크톱에서 모바일 미리보기: `Godot --path . res://scenes/boot.tscn --mobile-ui`.
-> ★ **플랫폼 우선순위(항상 기억)**: **PC(가로/스팀)가 주력.** 모바일은 할 수도 안 할 수도 있음 → **모바일 세트에 미러링/폴리시하느라 시간 쓰지 말 것.** 멀티플랫폼 구조는 "나중에 쉽게 붙일 뼈대"로만 유지. PC가 소스 오브 트루스(패리티도 게이트로 쓰지 말 것).
+> ★★ **핵심 원칙(항상 기억)**: **무슨 작업을 하든 모바일/PC를 분리한 구조로 짠다** — 로직 공유(core/·매니저·scenes/game·ui_kit) + **UI는 플랫폼별 분리**(scenes/pc↔scenes/mobile). 이 경계를 무너뜨리지 말 것. (부차: 지금은 PC 주력·모바일 보류라 모바일 미러링엔 시간 안 씀. 단 구조는 항상 분리 유지 → 나중에 쉽게 붙임. PC=소스 오브 트루스, 패리티는 게이트 아님.)
 > ✅ **UI 요소 누락 방지**: 화면 요소 추가/삭제 시 `docs/ui_features.json` 한 줄 갱신 후 **`python3 sim/ui_parity.py`** 로 PC↔모바일 패리티 점검(누락이면 종료코드 1). 이 도구가 있다는 걸 잊지 말 것.
 > ⚙️ **검증은 항상 절대경로 Godot**: `/Applications/Godot.app/Contents/MacOS/Godot` (PATH에 `godot` 없을 수 있음 → 거짓 통과 주의).
 
