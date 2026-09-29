@@ -15,6 +15,7 @@ var _level_label: Label
 var _xp_bar: ProgressBar
 var _page1: Control
 var _page2: Control
+var _skill_area: PanelContainer
 
 func _ready() -> void:
   # 배경
@@ -103,11 +104,13 @@ func _show_page(n: int) -> void:
 
 # 1페이지: 스킬트리(좌) + 룬(우상) + 액티브(우하)
 func _build_page1(p: Control) -> void:
-  var skill := _placeholder("스킬 트리\n(다음 슬라이스)", PANEL_BORDER)
-  skill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-  skill.offset_right = -700.0
-  skill.offset_bottom = -90.0
-  p.add_child(skill)
+  _skill_area = UIKit.make_card()
+  _skill_area.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+  _skill_area.offset_right = -700.0
+  _skill_area.offset_bottom = -90.0
+  p.add_child(_skill_area)
+  _refresh_skill_tree()
+  GameManager.upgrade_purchased.connect(func(_t, _l): _refresh_skill_tree())
 
   var rune := _placeholder("🔮 룬 슬롯\n(다음 슬라이스)", Color(0.5, 0.4, 0.7))
   rune.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -160,6 +163,85 @@ func _build_page2(p: Control) -> void:
   UIKit.style_button(start_btn, "main", Vector2(400, 92))
   start_btn.pressed.connect(_on_start)
   p.add_child(start_btn)
+
+# ── 스킬 트리: 화면(컨테이너)이 GameManager에서 읽어 순수 컴포넌트에 props로 공급 ──
+func _refresh_skill_tree() -> void:
+  if not is_instance_valid(_skill_area):
+    return
+  for c in _skill_area.get_children():
+    c.queue_free()
+  var tree := SkillTree.build(_build_skill_groups(), _build_skill_edges(), _on_skill_pressed, 130.0)
+  _skill_area.add_child(tree)
+
+func _build_skill_groups() -> Array:
+  var out := []
+  for gi in GameManager.SKILL_GROUPS.size():
+    var g = GameManager.SKILL_GROUPS[gi]
+    var nodes := []
+    for skill in g.skills:
+      nodes.append(_skill_node_props(skill, gi))
+    out.append({"name": g.name, "group_idx": gi, "columns": g.get("columns", 2), "nodes": nodes})
+  return out
+
+func _skill_node_props(skill: String, gi: int) -> Dictionary:
+  var cur: int = GameManager.get_upgrade_level(skill)
+  var def: Dictionary = GameManager.get_skill_def(skill)
+  var sub: int = GameManager.get_upgrade_sub_level(skill)
+  var sub_max: int = GameManager.get_skill_sub_max(skill)
+  var nxt := cur + 1
+  var prereq: Dictionary = GameManager.check_skill_prereqs(skill, nxt)
+  var is_dim: bool = (sub > 0 and sub >= sub_max) or not prereq.met
+  return {
+    "skill_type": skill, "name": def.name, "state": _node_state(skill), "group_idx": gi,
+    "current_level": cur, "next_level": nxt, "max_level": int(def.max_level),
+    "sub_level": sub, "sub_max": sub_max, "is_dim": is_dim,
+    "prereq_missing": prereq.missing, "required_total": GameManager.SKILL_REQUIRED_TOTAL.get(skill, 0),
+  }
+
+func _node_state(skill: String) -> String:
+  var cur: int = GameManager.get_upgrade_level(skill)
+  var def: Dictionary = GameManager.get_skill_def(skill)
+  var maxl := int(def.max_level)
+  if maxl >= 0 and cur >= maxl:
+    return "completed"
+  var sub: int = GameManager.get_upgrade_sub_level(skill)
+  var has_started := cur > 0 or sub > 0
+  var nxt := cur + 1
+  if not GameManager.check_skill_prereqs(skill, nxt).met:
+    return "in_progress" if has_started else "locked"
+  if sub == 0 and GameManager.is_gem_locked(skill, nxt):
+    return "gem_locked"
+  return "in_progress" if has_started else "purchasable"
+
+func _build_skill_edges() -> Array:
+  var out := []
+  var grp := {}
+  for gi in GameManager.SKILL_GROUPS.size():
+    for s in GameManager.SKILL_GROUPS[gi].skills:
+      grp[s] = gi
+  for key in GameManager.SKILL_PREREQS:
+    if not (key as String).ends_with(":1"):
+      continue
+    var child: String = (key as String).split(":")[0]
+    for req in GameManager.SKILL_PREREQS[key]:
+      var parent: String = req.get("type", "")
+      if "_or_" in parent:
+        for pp in parent.split("_or_"):
+          out.append(_edge(pp, child, grp))
+      else:
+        out.append(_edge(parent, child, grp))
+  return out
+
+func _edge(parent: String, child: String, grp: Dictionary) -> Dictionary:
+  var is_met := GameManager.get_upgrade_level(parent) >= 1 or GameManager.get_upgrade_sub_level(parent) > 0
+  return {"from": parent, "to": child, "group_idx": grp.get(child, 0), "is_met": is_met}
+
+func _on_skill_pressed(_btn: Button, skill: String, _level: int) -> void:
+  # MVP: 클릭 시 즉시 구매 시도(선택→설명→확정 흐름은 추후). 갱신은 upgrade_purchased 시그널로.
+  if GameManager.purchase_upgrade(skill):
+    GameManager.play_skill_upgrade_sound()
+  else:
+    GameManager.play_button_click()
 
 func _placeholder(text: String, border: Color) -> Control:
   var panel := PanelContainer.new()
