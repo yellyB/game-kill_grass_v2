@@ -8,14 +8,15 @@ signal panel_closed
 @onready var description_panel: Panel = $Panel/PaddedArea/DescriptionPanel
 @onready var description_label: Label = $Panel/PaddedArea/DescriptionPanel/DescriptionLabel
 @onready var confirm_btn: Button = $Panel/PaddedArea/ConfirmBtn
-@onready var close_btn: Button = $Panel/PaddedArea/CloseBtn
-@onready var money_display = $Panel/PaddedArea/MoneyDisplay
 @onready var skill_tree_scroll: ScrollContainer = $Panel/PaddedArea/SkillTreeScroll
 @onready var skill_tree_container: Control = $Panel/PaddedArea/SkillTreeScroll/SkillTreeContainer
 @onready var section_label: Label = $Panel/PaddedArea/SectionLabel
 
 
 var is_open: bool = false
+
+# 자원표시 = 공통 스캐폴드가 만든 CurrencyBar(구 MoneyDisplay 대체). 플로팅 -비용 피드백 호환.
+var money_display: CurrencyBar = null
 
 # Selection: "attack_power" or skill type ("grass_density" etc), "" = none
 var selected_type: String = ""
@@ -108,7 +109,9 @@ var _bottom_hbox: HBoxContainer = null
 func _ready() -> void:
   panel.visible = true   # 허브: standalone 화면이라 로드 시 바로 표시
   is_open = true
-  close_btn.pressed.connect(_on_close_pressed)
+  # 공통 스캐폴드 상단바(배경은 Panel이 담당 → build_top_bar만): 뒤로+제목+게임레벨+자원표시.
+  # 콘텐츠(스킬트리/액티브/월드버튼)는 PaddedArea가 공통 패딩(좌우 30, 상단 170, 하단 30)으로 담는다.
+  money_display = PageScaffold.build_top_bar(get_node("Panel"), "강화", GameManager.get_game_level(), _on_close_pressed)
   confirm_btn.pressed.connect(_on_confirm_pressed)
   _add_world_button()
   _build_active_section()
@@ -116,16 +119,12 @@ func _ready() -> void:
   GameManager.money_changed.connect(_on_money_changed)
   GameManager.upgrade_purchased.connect(_on_upgrade_purchased)
 
-  var title_label = padded_area.get_node_or_null("TitleLabel")
-  if title_label:
-    title_label.visible = false
-
   # Section label font size (rendered inside skill_tree_container for centering)
   section_label.add_theme_font_size_override("font_size", 37)
   section_label.visible = false
 
-  # Skill tree scroll starts below header (close btn + money display)
-  skill_tree_scroll.offset_top = 130.0
+  # 스킬트리는 PaddedArea(=콘텐츠 영역) 최상단부터. 상단바는 스캐폴드가 별도로 담당.
+  skill_tree_scroll.offset_top = 0.0
 
   # Style description panel to stand out from background
   var desc_style = StyleBoxFlat.new()
@@ -145,11 +144,7 @@ func _ready() -> void:
   desc_style.content_margin_bottom = 60
   description_panel.add_theme_stylebox_override("panel", desc_style)
 
-  # Button styles
-  close_btn.icon = preload("res://resources/images/icon/go_back.png")
-  close_btn.expand_icon = true
-  UIKit.style_button(close_btn, "muted")
-  _position_close_btn()
+  # Button styles (뒤로 버튼은 스캐폴드가 생성/스타일)
   UIKit.style_button(confirm_btn)
 
   # Skill count label (bottom-right of skill tree area)
@@ -230,7 +225,7 @@ func _build_active_section() -> void:
   divider.anchor_right = 0.605
   divider.offset_left = -2.0
   divider.offset_right = 2.0
-  divider.offset_top = 200.0
+  divider.offset_top = 0.0
   divider.offset_bottom = -320.0   # 하단 ~300px는 월드 버튼 자리로 비움
   divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
   padded_area.add_child(divider)
@@ -240,7 +235,7 @@ func _build_active_section() -> void:
   panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
   panel.anchor_left = 0.62
   panel.offset_left = 0.0
-  panel.offset_top = 200.0
+  panel.offset_top = 0.0
   panel.offset_right = -20.0
   panel.offset_bottom = -320.0   # 하단 ~300px는 월드 버튼 자리로 비움(스킬 설명 섹션 높이만큼)
   var ps := StyleBoxFlat.new()
@@ -1590,10 +1585,7 @@ func update_money_display() -> void:
 
 
 func _apply_side_padding() -> void:
-  pass  # PaddedArea handles padding
-
-func _position_close_btn() -> void:
-  pass  # Positioned in tscn within PaddedArea
+  pass  # PaddedArea가 공통 패딩 담당(좌우 30, 상단 170, 하단 30)
 
 func _position_bottom_section() -> void:
   var section_height = 300.0

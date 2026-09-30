@@ -18,7 +18,7 @@ var _rune_box: VBoxContainer = null
 
 func _ready() -> void:
 	_selected = GameManager.selected_world
-	# 공통 스캐폴드(배경+상단바+콘텐츠). 뒤로=허브. 통화표시는 씬의 MoneyDisplay가 우상단(상단바 영역).
+	# 공통 스캐폴드(배경+상단바+콘텐츠). 뒤로=허브. 통화표시(CurrencyBar)는 스캐폴드가 우상단에 공통 배치.
 	var content := PageScaffold.setup(self, "월드 선택", GameManager.get_game_level(),
 		func(): GameManager.play_button_click(); UIRouter.goto("hub"))
 	_build_left_rune(content)
