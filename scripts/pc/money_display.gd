@@ -61,6 +61,7 @@ func _create_gem_row() -> void:
 
   gem_label = Label.new()
   gem_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+  gem_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER  # 아이콘과 세로 중앙 정렬(숫자 내려감 방지)
   gem_label.add_theme_font_size_override("font_size", 38)
   gem_label.add_theme_color_override("font_color", Color(0.95, 0.3, 0.5))
   gem_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
