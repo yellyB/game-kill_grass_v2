@@ -18,41 +18,23 @@ var _rune_box: VBoxContainer = null
 
 func _ready() -> void:
 	_selected = GameManager.selected_world
-	var bg := ColorRect.new()
-	bg.color = Palette.BG_DARK
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(bg)
-	move_child(bg, 0)
-
-	_build_top_bar()
-	_build_left_rune()
-	_build_right_worlds()
-	_build_start()
-
-func _build_top_bar() -> void:
-	var back := Button.new()
-	back.text = "◀ 허브"
-	back.position = Vector2(30, 30)
-	back.add_theme_font_size_override("font_size", 28)
-	back.pressed.connect(func(): GameManager.play_button_click(); UIRouter.goto("hub"))
-	UIKit.style_button(back, "muted", Vector2(200, 64))
-	add_child(back)
-
-	var lvl := UIKit.make_label("게임 레벨 Lv.%d" % GameManager.get_game_level(), 34, Palette.XP, 4)
-	lvl.position = Vector2(260, 36)
-	add_child(lvl)
+	# 공통 스캐폴드(배경+상단바+콘텐츠). 뒤로=허브. 통화표시는 씬의 MoneyDisplay가 우상단(상단바 영역).
+	var content := PageScaffold.setup(self, "월드 선택", GameManager.get_game_level(),
+		func(): GameManager.play_button_click(); UIRouter.goto("hub"))
+	_build_left_rune(content)
+	_build_right_worlds(content)
+	_build_start(content)
 
 # ── 좌 ~35%: 룬 ──
-func _build_left_rune() -> void:
+func _build_left_rune(parent: Control) -> void:
 	var panel := UIKit.make_card(Color(0.10, 0.13, 0.16))
 	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	panel.anchor_right = 0.34
-	panel.offset_left = 30.0
-	panel.offset_top = 120.0
+	panel.offset_left = 0.0
+	panel.offset_top = 0.0
 	panel.offset_right = -10.0
-	panel.offset_bottom = -140.0
-	add_child(panel)
+	panel.offset_bottom = -20.0
+	parent.add_child(panel)
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 14)
 	panel.add_child(vb)
@@ -87,16 +69,16 @@ func _refresh_rune() -> void:
 		_rune_box.add_child(b)
 
 # ── 우 ~65%: 월드 카드 (세로) ──
-func _build_right_worlds() -> void:
+func _build_right_worlds(parent: Control) -> void:
 	var scroll := ScrollContainer.new()
 	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	scroll.anchor_left = 0.36
 	scroll.offset_left = 10.0
-	scroll.offset_top = 120.0
-	scroll.offset_right = -30.0
-	scroll.offset_bottom = -140.0
+	scroll.offset_top = 0.0
+	scroll.offset_right = 0.0
+	scroll.offset_bottom = -110.0
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	add_child(scroll)
+	parent.add_child(scroll)
 	_cards_box = VBoxContainer.new()
 	_cards_box.add_theme_constant_override("separation", 16)
 	_cards_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -213,19 +195,19 @@ func _make_world_card(index: int) -> PanelContainer:
 	return card
 
 # ── 하단: 시작 ──
-func _build_start() -> void:
+func _build_start(parent: Control) -> void:
 	var btn := Button.new()
 	btn.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
 	btn.offset_left = -440.0
-	btn.offset_top = -110.0
-	btn.offset_right = -20.0
-	btn.offset_bottom = -20.0
+	btn.offset_top = -100.0
+	btn.offset_right = 0.0
+	btn.offset_bottom = -10.0
 	btn.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	btn.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	btn.add_theme_font_size_override("font_size", 40)
 	_start_btn = btn
 	btn.pressed.connect(_on_start)
-	add_child(btn)
+	parent.add_child(btn)
 	_refresh_start()
 
 var _start_btn: Button = null
