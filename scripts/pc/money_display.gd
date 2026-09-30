@@ -10,9 +10,13 @@ var gem_row: HBoxContainer = null
 var gem_label: Label = null
 var crown_icon: Control = null
 
+# 숫자가 아이콘보다 아래로 내려가 보이는 폰트 메트릭 보정(위로 px). 필요시 조정.
+const NUM_NUDGE := 5
+
 func _ready() -> void:
   GameManager.money_changed.connect(_on_money_changed)
   _style_panel(coin_panel)
+  _nudge_up(money_label)
   # HUD(플레이 중)에서는 보석 패널 숨김
   var in_hud = get_tree().current_scene and get_tree().current_scene.scene_file_path == "res://scenes/pc/main.tscn"
   if not in_hud:
@@ -70,6 +74,23 @@ func _create_gem_row() -> void:
   gem_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
   gem_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
   gem_row.add_child(gem_label)
+  _nudge_up(gem_label)
+
+# 라벨을 HBox 안에서 위로 NUM_NUDGE px 올림(폰트 메트릭으로 숫자가 아래로 보이는 것 보정)
+func _nudge_up(lbl: Label) -> void:
+  var row := lbl.get_parent()
+  var idx := lbl.get_index()
+  row.remove_child(lbl)
+  var mc := MarginContainer.new()
+  mc.add_theme_constant_override("margin_top", -NUM_NUDGE)
+  mc.add_theme_constant_override("margin_bottom", NUM_NUDGE)
+  mc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+  mc.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+  mc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+  lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+  mc.add_child(lbl)
+  row.add_child(mc)
+  row.move_child(mc, idx)
 
 func _create_crown_row() -> void:
   crown_icon = TextureRect.new()
