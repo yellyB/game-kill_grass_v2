@@ -1,10 +1,23 @@
 extends CanvasLayer
 
+# 대기 중인 선택 횟수(=묶인 레벨업 수). 한 번에 여러 레벨업이 터져도 팝업을 쌓지 않고
+# 이 한 장에서 pending 만큼 연속 선택한다. HUD가 추가 레벨업마다 add_pending() 호출.
+var pending: int = 1
+var _title_label: Label = null
 
 func _ready() -> void:
   process_mode = Node.PROCESS_MODE_ALWAYS
   get_tree().paused = true
   _build_ui()
+
+# HUD: 이미 열린 셀렉션이 있을 때 추가 레벨업을 여기로 누적
+func add_pending() -> void:
+  pending += 1
+  _update_title()
+
+func _update_title() -> void:
+  if is_instance_valid(_title_label):
+    _title_label.text = "파워업 선택" if pending <= 1 else "파워업 선택  (%d개 남음)" % pending
 
 func _pick_random_powerups(count: int) -> Array:
   var pool: Array = []
@@ -93,6 +106,8 @@ func _build_ui() -> void:
   title.add_theme_color_override("font_outline_color", Color(0, 0, 0))
   title.add_theme_constant_override("outline_size", 4)
   center.add_child(title)
+  _title_label = title
+  _update_title()
 
   # Bold font for powerup names
   var bold_font = SystemFont.new()
@@ -236,5 +251,10 @@ func _get_current_level(type: String) -> int:
 func _on_selected(type: String) -> void:
   GameManager.play_confirm_click()
   GameManager.apply_powerup(type)
-  get_tree().paused = false
-  queue_free()
+  pending -= 1
+  if pending > 0:
+    # 남은 레벨업만큼 닫지 않고 바로 다음 선택으로(새 3택 리롤)
+    _build_ui()
+  else:
+    get_tree().paused = false
+    queue_free()

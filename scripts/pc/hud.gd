@@ -2,7 +2,9 @@ extends CanvasLayer
 
 @onready var padded_area: Control = $PaddedArea
 @onready var money_display = $PaddedArea/MoneyDisplay
-@onready var money_label: Label = $PaddedArea/MoneyDisplay/CoinPanel/CoinRow/MoneyLabel
+# MoneyLabel 경로 하드코딩 금지: money_display._ready의 _nudge_up이 레이블을 MarginContainer로
+# 재부모화하므로 깊은 경로($.../CoinRow/MoneyLabel)는 null이 됨. 인스턴스가 들고 있는 참조 사용.
+@onready var money_label: Label = money_display.money_label
 @onready var fury_hbox: HBoxContainer = $PaddedArea/FuryHBox
 @onready var fury_progress: ProgressBar = $PaddedArea/FuryHBox/FuryProgressBar
 @onready var fury_label: Label = $PaddedArea/FuryHBox/FuryLabel
@@ -509,10 +511,19 @@ func _on_fury_changed(value: float) -> void:
     fury_label.text = "Lv.%d %d%%" % [GameManager.session_level, int(pct)]
 
 # 세션 레벨업 → 파워업 3택 오버레이 표시(구 분노 보스 소환 대체)
+# 한 번에 여러 레벨업(과강 상태로 쉬운 월드 입장 등)이 터져도 팝업을 쌓지 않고,
+# 열려 있는 셀렉션에 pending으로 누적 → 한 화면에서 연속 선택.
+var _active_selection: Node = null
+
 func _on_level_up(_new_level: int) -> void:
   PlatformService.vibrate(120)  # 데스크톱에선 자동 무시
   _flash_fury_bar()
+  if is_instance_valid(_active_selection):
+    _active_selection.add_pending()
+    return
   var selection = preload("res://scenes/pc/powerup_selection.tscn").instantiate()
+  _active_selection = selection
+  selection.tree_exited.connect(func(): _active_selection = null)
   get_tree().root.add_child(selection)
 
 # ── 분노 파티클 (풀 → 게이지) ──
