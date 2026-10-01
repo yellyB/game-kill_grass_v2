@@ -6,7 +6,7 @@ class_name PowerupData
 const POWERUP_IMAGE_PATH = "res://resources/images/powerup/"
 
 # 파워업(지속, item:false) + 아이템(즉발, item:true) 통합 데이터.
-# enabled:false = 아직 효과 미구현(배치2) → 추첨/드롭 풀에서 제외.
+# enabled:false = 3택/드롭 풀에서 제외(밸런스 보류 등). 효과 자체는 game_manager에 배선돼 있음.
 # 이미지 없으면 색상 폴백. 상세 설계: docs/powerups.md
 const POWERUP_DATA = [
   # ── 공격 (파워업) ──
@@ -50,7 +50,7 @@ const POWERUP_DATA = [
   {"type": "luck", "name": "행운의 편자", "desc": "레어 이상 등장 확률 증가", "color": Color(0.9, 0.9, 0.4), "image": "", "stackable": true, "item": false, "weight": 4, "enabled": true},
   {"type": "snowball", "name": "눈덩이", "desc": "풀 100개마다 공격력 +2% (세션 내)", "color": Color(0.8, 0.9, 1.0), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": true},
   {"type": "compound", "name": "복리 성장", "desc": "레벨업마다 전 스탯 소폭 영구 증가", "color": Color(0.9, 0.7, 1.0), "image": "", "stackable": false, "item": false, "weight": 1, "enabled": true},
-  # ── 구 즉발 17종 (§3.10): 14종 레벨업 파워업 복귀(item:false) / 3종 보류(enabled:false). "item:true=슬롯후보" 개념 폐기 ──
+  # ── 구 즉발 17종 (§3.10): 전부 레벨업 파워업으로 복귀(item:false). "item:true=슬롯후보" 개념 폐기 ──
   {"type": "gold_rush", "name": "골드 러시", "desc": "10초간 코인 가치 2배", "color": Color(1.0, 0.85, 0.0), "image": "골드러시.png", "stackable": false, "item": false, "weight": 10, "enabled": true},
   {"type": "blackhole", "name": "블랙홀", "desc": "드롭 코인 즉시 흡수", "color": Color(0.2, 0.0, 0.4), "image": "블랙홀.png", "stackable": false, "item": false, "weight": 10, "enabled": true},
   {"type": "golden_bloom", "name": "골든 블룸", "desc": "주변 풀을 황금풀로", "color": Color(1.0, 0.9, 0.2), "image": "골든블룸.png", "stackable": false, "item": false, "weight": 10, "enabled": true},
@@ -65,10 +65,12 @@ const POWERUP_DATA = [
   {"type": "time_freeze", "name": "시간 정지", "desc": "타이머 잠깐 정지, 수확 계속", "color": Color(0.6, 0.8, 1.0), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": true},
   {"type": "fertilizer", "name": "거름 살포", "desc": "짧은 시간 풀 재생·밀도 폭증", "color": Color(0.5, 0.8, 0.3), "image": "", "stackable": false, "item": false, "weight": 10, "enabled": true},
   {"type": "golden_rain", "name": "황금비", "desc": "잠깐 코인·황금풀이 쏟아짐", "color": Color(1.0, 0.9, 0.3), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": true},
-  # 보류 3종 (§3.10): enabled:false → 3택 풀 제외
-  {"type": "growth_spurt", "name": "그로스 스퍼트", "desc": "레벨업 게이지 35% 충전", "color": Color(0.9, 0.6, 0.9), "image": "몬스터퓨리.png", "stackable": false, "item": false, "weight": 10, "enabled": false},
-  {"type": "instant_level", "name": "즉시 레벨업", "desc": "즉시 레벨업 1회", "color": Color(0.7, 0.9, 1.0), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": false},
-  {"type": "uproot", "name": "뿌리 뽑기", "desc": "거목/정예에 즉시 큰 피해", "color": Color(0.6, 0.4, 0.2), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": false},
+  # 구 보류 3종 활성화(§3.10) — ⚠️ 밸런스 집중 조절 필요(dev-plan 참조):
+  #   uproot=거목 무력화 위험(§7-7), instant_level/growth_spurt=레벨업 가속 폭주 위험.
+  #   growth_spurt 아이콘=구 몬스터퓨리 재탕(임시, 전용 아트 교체 예정).
+  {"type": "growth_spurt", "name": "그로스 스퍼트", "desc": "레벨업 게이지 35% 충전", "color": Color(0.9, 0.6, 0.9), "image": "몬스터퓨리.png", "stackable": false, "item": false, "weight": 10, "enabled": true},
+  {"type": "instant_level", "name": "즉시 레벨업", "desc": "즉시 레벨업 1회", "color": Color(0.7, 0.9, 1.0), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": true},
+  {"type": "uproot", "name": "뿌리 뽑기", "desc": "거목/정예에 즉시 큰 피해", "color": Color(0.6, 0.4, 0.2), "image": "", "stackable": false, "item": false, "weight": 4, "enabled": true},
 ]
 
 static func get_powerup_texture(data: Dictionary) -> Texture2D:
