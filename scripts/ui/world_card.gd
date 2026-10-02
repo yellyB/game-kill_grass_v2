@@ -17,7 +17,9 @@ static func build(props: Dictionary, on_select: Callable, on_transcend: Callable
 	var selected: bool = props.get("selected", false)
 
 	var card := PanelContainer.new()
+	# 가로폭 고정 안 함 = width:100%. 실제 너비는 부모(리스트 상자)가 결정. 세로만 143 고정.
 	card.custom_minimum_size = Vector2(0, 143)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var st := StyleBoxFlat.new()
 	if selected:
 		st.bg_color = Color(0.12, 0.24, 0.2) if unlocked else Color(0.15, 0.15, 0.22)
