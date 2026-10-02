@@ -64,6 +64,13 @@ func reset_all_data() -> void:
   GameManager.world_strength_levels = {}
   GameManager.collected_gem_levels = {}
   GameManager.has_ever_transcended = false
+  # 누락 방지: 메타/세션 잔재도 전부 초기화 (이전엔 game_xp·played_once 등이 살아남았음)
+  GameManager.game_xp = 0.0
+  GameManager.has_played_once = false
+  GameManager.owned_tokens = 0
+  GameManager.active_rune = ""
+  GameManager.held_items = []
+  GameManager.reset_session_data()
   GameManager.bgm_enabled = true
   GameManager.sfx_enabled = true
   GameManager.vibration_enabled = true
