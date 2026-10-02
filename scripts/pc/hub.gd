@@ -115,6 +115,7 @@ func _ready() -> void:
   confirm_btn.pressed.connect(_on_confirm_pressed)
   _add_world_button()
   _build_active_section()
+  _build_rune_section()
 
   GameManager.money_changed.connect(_on_money_changed)
   GameManager.upgrade_purchased.connect(_on_upgrade_purchased)
@@ -212,9 +213,10 @@ func _on_hub_world_pressed() -> void:
   GameManager.play_confirm_click()
   UIRouter.goto("world_select")
 
-# ── 우측 40%: 액티브 강화 (메뉴 팝업 스타일 그대로 이식) ──
+# ── 우측 40%: 액티브 강화(상 절반) + 룬(하 절반) ──
 var _active_cards: VBoxContainer = null
 var _active_token_label: Label = null
+var _right_vbox: VBoxContainer = null   # 액티브/룬을 50:50으로 담는 우측 열
 
 func _build_active_section() -> void:
   # 스킬트리 | 액티브 구분 바
@@ -230,14 +232,20 @@ func _build_active_section() -> void:
   divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
   padded_area.add_child(divider)
 
-  # 파란 테두리 패널 (메뉴 액티브 팝업 스타일)
+  # 우측 열(액티브 위 / 룬 아래, 50:50) 컨테이너 — 월드버튼 위 band 전체
+  _right_vbox = VBoxContainer.new()
+  _right_vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+  _right_vbox.anchor_left = 0.62
+  _right_vbox.offset_left = 0.0
+  _right_vbox.offset_top = 0.0
+  _right_vbox.offset_right = -20.0
+  _right_vbox.offset_bottom = -320.0   # band = 월드버튼 위 전체(액티브+룬이 반씩 EXPAND_FILL)
+  _right_vbox.add_theme_constant_override("separation", 16)
+  padded_area.add_child(_right_vbox)
+
+  # 파란 테두리 패널 (메뉴 액티브 팝업 스타일) — 상 절반
   var panel := PanelContainer.new()
-  panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-  panel.anchor_left = 0.62
-  panel.offset_left = 0.0
-  panel.offset_top = 0.0
-  panel.offset_right = -20.0
-  panel.offset_bottom = -320.0   # 하단 ~300px는 월드 버튼 자리로 비움(스킬 설명 섹션 높이만큼)
+  panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
   var ps := StyleBoxFlat.new()
   ps.bg_color = Color(0.08, 0.12, 0.14)
   ps.set_corner_radius_all(20)
@@ -248,7 +256,7 @@ func _build_active_section() -> void:
   ps.content_margin_top = 40
   ps.content_margin_bottom = 36
   panel.add_theme_stylebox_override("panel", ps)
-  padded_area.add_child(panel)
+  _right_vbox.add_child(panel)
 
   var vbox := VBoxContainer.new()
   vbox.add_theme_constant_override("separation", 16)
@@ -361,6 +369,78 @@ func _active_row(id: String, stat: String, label_text: String, cur_value: String
         GameManager.play_button_click())
   row.add_child(btn)
   return row
+
+# ── 우측 하단: 룬 (이번 판 1개, 세션 로드아웃) — world_select에서 이전 ──
+var _rune_grid: GridContainer = null
+
+func _build_rune_section() -> void:
+  # 하 절반(액티브와 50:50) — _right_vbox의 두 번째 자식
+  var panel := PanelContainer.new()
+  panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+  var ps := StyleBoxFlat.new()
+  ps.bg_color = Color(0.1, 0.13, 0.1)
+  ps.set_corner_radius_all(20)
+  ps.set_border_width_all(3)
+  ps.border_color = Color(0.45, 0.7, 0.4)   # 초록 외곽선 = 이번 판(일회성) 신호
+  ps.content_margin_left = 28
+  ps.content_margin_right = 28
+  ps.content_margin_top = 18
+  ps.content_margin_bottom = 18
+  panel.add_theme_stylebox_override("panel", ps)
+  _right_vbox.add_child(panel)
+
+  var vbox := VBoxContainer.new()
+  vbox.add_theme_constant_override("separation", 10)
+  panel.add_child(vbox)
+
+  var header := Label.new()
+  header.text = "🔮 룬 — 이번 판 1개"
+  header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+  header.add_theme_font_size_override("font_size", 30)
+  header.add_theme_color_override("font_color", Color(0.7, 0.9, 0.6))
+  header.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+  header.add_theme_constant_override("outline_size", 3)
+  vbox.add_child(header)
+
+  if GameManager.get_game_level() < 8:
+    var lock := UIKit.make_label("게임 레벨 8부터 개방", 24, Palette.TEXT_DIM, 3)
+    lock.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    lock.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    lock.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    vbox.add_child(lock)
+    return
+
+  _rune_grid = GridContainer.new()
+  _rune_grid.columns = 2
+  _rune_grid.add_theme_constant_override("h_separation", 12)
+  _rune_grid.add_theme_constant_override("v_separation", 12)
+  _rune_grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
+  vbox.add_child(_rune_grid)
+  _refresh_rune()
+
+func _refresh_rune() -> void:
+  if not is_instance_valid(_rune_grid):
+    return
+  for c in _rune_grid.get_children():
+    c.queue_free()
+  for r in GameManager.RUNE_DEFS:
+    var unlocked: bool = GameManager.is_rune_unlocked(r.type)
+    var active: bool = GameManager.active_rune == r.type
+    var b := Button.new()
+    b.text = r.name
+    b.tooltip_text = r.desc
+    b.custom_minimum_size = Vector2(0, 56)
+    b.add_theme_font_size_override("font_size", 22)
+    b.disabled = not unlocked
+    b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    b.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    UIKit.style_button(b, "main" if active else "muted")
+    if unlocked:
+      b.pressed.connect(func():
+        GameManager.play_button_click()
+        GameManager.set_active_rune("" if GameManager.active_rune == r.type else r.type)
+        _refresh_rune())
+    _rune_grid.add_child(b)
 
 func _on_other_panel_opened() -> void:
   pass
