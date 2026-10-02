@@ -124,102 +124,29 @@ func _rebuild_cards() -> void:
 		_cards_box.add_child(_make_world_card(i))
 
 func _make_world_card(index: int) -> PanelContainer:
-	# 원본 _create_world_card 디자인 이식(높이 143, O/X, 이름38/몬스터26, 초월Lv+보너스, 초월버튼 150×108)
+	# 컨테이너 역할: GameManager에서 상태 읽어 props 조립 → 공유 WorldCard 컴포넌트로 렌더
 	var wd: Dictionary = WORLD_DATA[index]
-	var unlocked: bool = index in GameManager.unlocked_worlds
-	var selected: bool = index == _selected
-
-	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 143)
-	var st := StyleBoxFlat.new()
-	if selected:
-		st.bg_color = Color(0.12, 0.24, 0.2) if unlocked else Color(0.15, 0.15, 0.22)
-		st.border_color = Color(0.35, 0.85, 0.62) if unlocked else Color(0.45, 0.45, 0.7)
-		st.set_border_width_all(3)
-	else:
-		st.bg_color = Color(0.1, 0.17, 0.15) if unlocked else Color(0.09, 0.1, 0.14)
-		st.border_color = Color(0.25, 0.55, 0.42) if unlocked else Color(0.22, 0.26, 0.35)
-		st.set_border_width_all(2)
-	st.set_corner_radius_all(14)
-	st.content_margin_left = 26
-	st.content_margin_right = 26
-	st.content_margin_top = 18
-	st.content_margin_bottom = 18
-	card.add_theme_stylebox_override("panel", st)
-
-	if not unlocked:
-		var lock_c := CenterContainer.new()
-		lock_c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var lock := TextureRect.new()
-		lock.texture = Icons.LOCK
-		lock.custom_minimum_size = Vector2(108, 108)
-		lock.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
-		lock.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		lock.modulate = Color(0.4, 0.4, 0.5)
-		lock_c.add_child(lock)
-		card.add_child(lock_c)
-	else:
-		var hbox := HBoxContainer.new()
-		hbox.add_theme_constant_override("separation", 14)
-		hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		card.add_child(hbox)
-
-		var icon := UIKit.make_label("O", 43, Color(0.3, 0.8, 0.55), 0)
-		hbox.add_child(icon)
-
-		var info := VBoxContainer.new()
-		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		info.add_theme_constant_override("separation", 8)
-		info.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		hbox.add_child(info)
-		info.add_child(UIKit.make_label(wd.name, 38, Color(1, 0.95, 0.8), 2))
-		info.add_child(UIKit.make_label(wd.monster, 26, Color(0.62, 0.7, 0.66), 0))
-
-		var strength: int = GameManager.get_world_strength_level(index)
-		if GameManager.is_world_cleared(index):
-			var str_hbox := HBoxContainer.new()
-			str_hbox.add_theme_constant_override("separation", 10)
-			str_hbox.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			hbox.add_child(str_hbox)
-			var str_info := VBoxContainer.new()
-			str_info.add_theme_constant_override("separation", 1)
-			str_info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			str_hbox.add_child(str_info)
-			if strength > 0:
-				str_info.add_child(UIKit.make_label("초월 Lv.%d" % strength, 28, Color(1.0, 0.8, 0.3), 2))
-				str_info.add_child(UIKit.make_label("체력+%d%%" % GameManager.get_strength_hp_bonus_pct(strength), 23, Color(0.7, 0.65, 0.4), 0))
-				str_info.add_child(UIKit.make_label("보상+%d%%" % GameManager.get_strength_reward_bonus_pct(strength), 23, Color(0.7, 0.65, 0.4), 0))
-			var str_btn := Button.new()
-			str_btn.add_theme_font_size_override("font_size", 36)
-			str_btn.custom_minimum_size = Vector2(150, 108)
-			if strength >= GameManager.MAX_STRENGTH_LEVEL:
-				str_btn.text = "MAX"
-				str_btn.disabled = true
-				UIKit.style_button(str_btn, "muted")
-			else:
-				str_btn.text = "초월"
-				UIKit.style_button(str_btn, "main")
-				str_btn.pressed.connect(func():
-					GameManager.play_button_click()
-					_show_strengthen_dialog(index))
-			str_hbox.add_child(str_btn)
-
-	# 카드 클릭 오버레이(선택)
-	var pick := Button.new()
-	pick.flat = true
-	pick.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	pick.focus_mode = Control.FOCUS_NONE
-	pick.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	pick.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	pick.pressed.connect(func():
-		GameManager.play_button_click()
-		_selected = index
-		_rebuild_cards()
-		_refresh_start())
-	card.add_child(pick)
-	card.move_child(pick, 0)
-	return card
+	var strength: int = GameManager.get_world_strength_level(index)
+	var props := {
+		"name": wd.name,
+		"monster": wd.monster,
+		"unlocked": index in GameManager.unlocked_worlds,
+		"selected": index == _selected,
+		"cleared": GameManager.is_world_cleared(index),
+		"strength": strength,
+		"is_max": strength >= GameManager.MAX_STRENGTH_LEVEL,
+		"hp_bonus_pct": GameManager.get_strength_hp_bonus_pct(strength),
+		"reward_bonus_pct": GameManager.get_strength_reward_bonus_pct(strength),
+	}
+	return WorldCard.build(props,
+		func():
+			GameManager.play_button_click()
+			_selected = index
+			_rebuild_cards()
+			_refresh_start(),
+		func():
+			GameManager.play_button_click()
+			_show_strengthen_dialog(index))
 
 var _start_btn: Button = null
 
