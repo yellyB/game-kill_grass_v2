@@ -41,6 +41,7 @@ const WORLD_GRASS_REWARD_MULT: Array = [1.0, 1.3, 1.69, 2.2, 2.86, 3.71, 4.83]
 var world_strength_levels: Dictionary = {}  # {world_index: level}
 var collected_gem_levels: Dictionary = {}  # {world_index: [strength_levels...]} 이미 보석 획득한 초월 레벨
 var has_ever_transcended: bool = false  # 최초 초월 여부 (툴팁 표시용)
+var has_played_once: bool = false  # 최초 1회라도 플레이했는지 (최초 실행=월드1 직행 판별)
 func is_world_cleared(world: int) -> bool:
   var next = world + 1
   var is_last = next >= WORLD_UNLOCK_COSTS.size()
@@ -1503,6 +1504,7 @@ func get_save_data() -> Dictionary:
     "world_strength_levels": world_strength_levels.duplicate(),
     "collected_gem_levels": collected_gem_levels.duplicate(),
     "has_ever_transcended": has_ever_transcended,
+    "has_played_once": has_played_once,
     "game_xp": game_xp,
     "active_rune": active_rune,
     "owned_tokens": owned_tokens,
@@ -1559,6 +1561,7 @@ func load_save_data(data: Dictionary) -> void:
   for k in saved_strength:
     world_strength_levels[int(k)] = int(saved_strength[k])
   has_ever_transcended = data.get("has_ever_transcended", false)
+  has_played_once = data.get("has_played_once", false)
   game_xp = float(data.get("game_xp", 0.0))
   active_rune = str(data.get("active_rune", ""))
   owned_tokens = int(data.get("owned_tokens", 0))

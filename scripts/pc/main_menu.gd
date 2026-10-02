@@ -134,6 +134,15 @@ func _ready() -> void:
   vbox.move_child(_hub_btn, _active_btn.get_index() + 1)
   UIKit.style_button(_hub_btn, "sub", Vector2(460, 112))
 
+  # (유지) 구 월드선택 오버레이 진입 버튼 — 기존 메뉴내 월드선택 경로 보존
+  var _world_btn := Button.new()
+  _world_btn.text = "월드 선택 (구)"
+  _world_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+  _world_btn.pressed.connect(func(): GameManager.play_button_click(); _open_world_select())
+  vbox.add_child(_world_btn)
+  vbox.move_child(_world_btn, _hub_btn.get_index() + 1)
+  UIKit.style_button(_world_btn, "sub", Vector2(460, 112))
+
   quit_btn.text = "종료"
   quit_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
   UIKit.style_button(quit_btn, "muted", Vector2(460, 112))
@@ -166,7 +175,15 @@ func animate_title() -> void:
 
 func _on_play_pressed() -> void:
   GameManager.play_button_click()
-  _open_world_select()
+  if not GameManager.has_played_once:
+    # 최초 실행: 허브/월드선택 생략하고 월드1로 바로 직행
+    GameManager.has_played_once = true
+    GameManager.selected_world = 0
+    SaveManager.save_game()
+    _start_game()
+  else:
+    # 그 외: 허브(스킬 화면)부터
+    UIRouter.goto("hub")
 
 func _start_game() -> void:
   if _menu_bgm:
