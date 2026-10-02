@@ -196,8 +196,18 @@ func update_chunks() -> void:
   var player_chunk = get_chunk_coord(relative_player_pos)
   var chunks_to_keep: Dictionary = {}
 
-  for x in range(-render_distance, render_distance + 1):
-    for y in range(-render_distance, render_distance + 1):
+  # 가시 영역 기반 축별 청크 반경(화면 비율 대응) — 정사각형이 아니라 실제 보이는 폭/높이만큼 로드.
+  # → 가로 화면에서 좌우가 비는 문제 해결. 줌·스트레치는 캔버스 변환으로 자동 반영. +1청크 여유.
+  var rx := render_distance
+  var ry := render_distance
+  var vp := get_viewport()
+  if vp:
+    var vis: Vector2 = vp.get_canvas_transform().affine_inverse().basis_xform(vp.get_visible_rect().size).abs()
+    rx = maxi(render_distance, ceili(vis.x * 0.5 / chunk_size) + 1)
+    ry = maxi(render_distance, ceili(vis.y * 0.5 / chunk_size) + 1)
+
+  for x in range(-rx, rx + 1):
+    for y in range(-ry, ry + 1):
       var chunk_coord = Vector2i(player_chunk.x + x, player_chunk.y + y)
       chunks_to_keep[chunk_coord] = true
       if not loaded_chunks.has(chunk_coord):
