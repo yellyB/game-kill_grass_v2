@@ -488,7 +488,7 @@ func _on_session_end_touch() -> void:
   # Normal session end - finalize and save
   GameManager.finalize_session()
   SaveManager.save_game()
-  SessionManager.quit_to_menu()
+  SessionManager.quit_to_hub()   # 세션 자연 종료 → 허브(§3.87). "처음으로"는 메뉴 유지.
 
 func _notification(what: int) -> void:
   if what == NOTIFICATION_WM_GO_BACK_REQUEST:

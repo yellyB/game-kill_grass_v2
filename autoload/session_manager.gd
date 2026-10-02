@@ -91,6 +91,11 @@ func quit_to_menu() -> void:
   end_session(false)
   UIRouter.goto("main_menu")
 
+# 세션 자연 종료(결과 화면 → 복귀) 전용: 허브로 복귀(§3.87). "처음으로"는 quit_to_menu 유지.
+func quit_to_hub() -> void:
+  end_session(false)
+  UIRouter.goto("hub")
+
 func quit_game() -> void:
   end_session()
   PlatformService.request_quit()
