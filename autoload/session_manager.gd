@@ -57,7 +57,8 @@ func set_freeze(seconds: float) -> void:
 
 func _notification(what: int) -> void:
   if what == NOTIFICATION_WM_CLOSE_REQUEST:
-    end_session()
+    # 세션 중 앱 종료 = 미완료 → 세션 코인 버림(save=false). 완료(결과 화면)만 총액 편입.
+    end_session(false)
     PlatformService.request_quit()
 
 func start_session() -> void:
