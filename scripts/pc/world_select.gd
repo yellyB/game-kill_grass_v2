@@ -188,8 +188,8 @@ func _make_world_card(index: int) -> PanelContainer:
 			str_hbox.add_child(str_info)
 			if strength > 0:
 				str_info.add_child(UIKit.make_label("초월 Lv.%d" % strength, 28, Color(1.0, 0.8, 0.3), 2))
-				str_info.add_child(UIKit.make_label("체력+%d%%" % int(strength * 40), 23, Color(0.7, 0.65, 0.4), 0))
-				str_info.add_child(UIKit.make_label("보상+%d%%" % int(strength * 50), 23, Color(0.7, 0.65, 0.4), 0))
+				str_info.add_child(UIKit.make_label("체력+%d%%" % GameManager.get_strength_hp_bonus_pct(strength), 23, Color(0.7, 0.65, 0.4), 0))
+				str_info.add_child(UIKit.make_label("보상+%d%%" % GameManager.get_strength_reward_bonus_pct(strength), 23, Color(0.7, 0.65, 0.4), 0))
 			var str_btn := Button.new()
 			str_btn.add_theme_font_size_override("font_size", 36)
 			str_btn.custom_minimum_size = Vector2(150, 108)
@@ -269,12 +269,10 @@ func _show_strengthen_dialog(world: int) -> void:
 	var needs_gems: bool = level > 0 and not GameManager.has_collected_gems(world, level)
 	var can_afford: bool = GameManager.money >= cost and not needs_gems
 
-	var base_hp: float = GameManager.WORLD_GRASS_HP_MULT[world] if world < GameManager.WORLD_GRASS_HP_MULT.size() else 1.0
-	var base_rw: float = GameManager.WORLD_GRASS_REWARD_MULT[world] if world < GameManager.WORLD_GRASS_REWARD_MULT.size() else 1.0
-	var cur_hp: float = base_hp * (1.0 + level * 0.4)
-	var cur_rw: float = base_rw * (1.0 + level * 0.5)
-	var next_hp: float = base_hp * (1.0 + (level + 1) * 0.4)
-	var next_rw: float = base_rw * (1.0 + (level + 1) * 0.5)
+	var cur_hp: float = GameManager.get_strength_hp_mult(world, level)
+	var cur_rw: float = GameManager.get_strength_reward_mult(world, level)
+	var next_hp: float = GameManager.get_strength_hp_mult(world, level + 1)
+	var next_rw: float = GameManager.get_strength_reward_mult(world, level + 1)
 
 	var root := Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)

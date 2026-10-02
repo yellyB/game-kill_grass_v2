@@ -536,8 +536,8 @@ func _create_world_card(index: int) -> PanelContainer:
         var str_spacer = Control.new()
         str_spacer.custom_minimum_size = Vector2(0, 8)
         str_info.add_child(str_spacer)
-        var hp_bonus = int(strength * 40)
-        var rw_bonus = int(strength * 50)
+        var hp_bonus = GameManager.get_strength_hp_bonus_pct(strength)
+        var rw_bonus = GameManager.get_strength_reward_bonus_pct(strength)
         var hp_label = Label.new()
         hp_label.text = "체력+%d%%" % hp_bonus
         hp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -680,12 +680,10 @@ func _show_strengthen_dialog(world: int) -> void:
   var needs_gems = level > 0 and not GameManager.has_collected_gems(world, level)
   var can_afford = GameManager.money >= cost and not needs_gems
 
-  var base_hp = GameManager.WORLD_GRASS_HP_MULT[world] if world < GameManager.WORLD_GRASS_HP_MULT.size() else 1.0
-  var base_rw = GameManager.WORLD_GRASS_REWARD_MULT[world] if world < GameManager.WORLD_GRASS_REWARD_MULT.size() else 1.0
-  var cur_hp = base_hp * (1.0 + level * 0.4)
-  var cur_rw = base_rw * (1.0 + level * 0.5)
-  var next_hp = base_hp * (1.0 + (level + 1) * 0.4)
-  var next_rw = base_rw * (1.0 + (level + 1) * 0.5)
+  var cur_hp = GameManager.get_strength_hp_mult(world, level)
+  var cur_rw = GameManager.get_strength_reward_mult(world, level)
+  var next_hp = GameManager.get_strength_hp_mult(world, level + 1)
+  var next_rw = GameManager.get_strength_reward_mult(world, level + 1)
 
   # Root overlay
   var root = Control.new()

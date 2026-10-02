@@ -87,17 +87,32 @@ func strengthen_world(world: int) -> bool:
   SaveManager.save_game()
   return true
 
+# 초월 강화 배수 공식 — 단일 소스(SSOT). 뷰의 미리보기 표시도 반드시 이 함수들을 호출할 것.
+const STRENGTH_HP_PER_LV := 0.4      # 초월 레벨당 풀 체력 +40%
+const STRENGTH_REWARD_PER_LV := 0.5  # 초월 레벨당 풀 보상 +50%
+
+# 특정 월드/초월레벨의 체력·보상 배수(미리보기·실제 공용)
+func get_strength_hp_mult(world: int, level: int) -> float:
+  var base = WORLD_GRASS_HP_MULT[world] if world < WORLD_GRASS_HP_MULT.size() else 1.0
+  return base * (1.0 + level * STRENGTH_HP_PER_LV)
+
+func get_strength_reward_mult(world: int, level: int) -> float:
+  var base = WORLD_GRASS_REWARD_MULT[world] if world < WORLD_GRASS_REWARD_MULT.size() else 1.0
+  return base * (1.0 + level * STRENGTH_REWARD_PER_LV)
+
+# 카드 표시용 추가 보너스 %(초월 레벨 기준, base 제외)
+func get_strength_hp_bonus_pct(level: int) -> int:
+  return int(level * STRENGTH_HP_PER_LV * 100)
+
+func get_strength_reward_bonus_pct(level: int) -> int:
+  return int(level * STRENGTH_REWARD_PER_LV * 100)
+
+# 현재 선택 월드의 실제 적용 배수(게임플레이) — 위 공식 재사용
 func get_world_grass_hp_mult() -> float:
-  var w = selected_world
-  var base = WORLD_GRASS_HP_MULT[w] if w < WORLD_GRASS_HP_MULT.size() else 1.0
-  var strength = get_world_strength_level(w)
-  return base * (1.0 + strength * 0.4)
+  return get_strength_hp_mult(selected_world, get_world_strength_level(selected_world))
 
 func get_world_grass_reward_mult() -> float:
-  var w = selected_world
-  var base = WORLD_GRASS_REWARD_MULT[w] if w < WORLD_GRASS_REWARD_MULT.size() else 1.0
-  var strength = get_world_strength_level(w)
-  return base * (1.0 + strength * 0.5)
+  return get_strength_reward_mult(selected_world, get_world_strength_level(selected_world))
 
 signal world_unlocked(index: int)
 
